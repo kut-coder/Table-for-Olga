@@ -1,0 +1,213 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Меню для клиента — нутрициолог</title>
+  <link rel="stylesheet" href="styles.css" />
+  <!-- html2canvas — только для сохранения JPG (лёгкая зависимость с CDN) -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js" defer></script>
+  <script src="app.js" defer></script>
+</head>
+<body>
+
+  <!-- =========================================================
+       БЛОК 1. ШАПКА ПРИЛОЖЕНИЯ
+       ========================================================= -->
+  <header class="app-header">
+    <h1 class="app-title">Таблица меню</h1>
+    <p class="app-subtitle">Введите данные клиента и рацион — скачайте PDF или JPG</p>
+  </header>
+
+  <main class="app-main">
+
+    <!-- =========================================================
+         БЛОК 2. ДАННЫЕ КЛИЕНТА
+         Фамилия, имя, номер недели
+         ========================================================= -->
+    <section class="panel" id="client-section">
+      <h2 class="panel-title">Клиент</h2>
+
+      <div class="form-row">
+        <label class="field">
+          <span class="field-label">Фамилия</span>
+          <input type="text" id="client-lastname" placeholder="Иванова" autocomplete="off" />
+        </label>
+
+        <label class="field">
+          <span class="field-label">Имя</span>
+          <input type="text" id="client-firstname" placeholder="Мария" autocomplete="off" />
+        </label>
+
+        <label class="field field--narrow">
+          <span class="field-label">Неделя</span>
+          <input type="number" id="week-number" min="1" placeholder="14" />
+        </label>
+      </div>
+    </section>
+
+    <!-- =========================================================
+         БЛОК 3. ПРИЁМЫ ПИЩИ
+         Завтрак / Перекус / Обед / Перекус / Ужин
+         Перекусы можно отключить — тогда колонки не выводятся
+         ========================================================= -->
+    <section class="panel" id="meals-section">
+      <h2 class="panel-title">Приёмы пищи</h2>
+      <p class="panel-hint">Отметьте, какие приёмы пищи показывать в таблице. Перекусы необязательны.</p>
+
+      <div class="meal-toggles" id="meal-toggles">
+        <label class="toggle">
+          <input type="checkbox" data-meal="breakfast" checked disabled />
+          <span>Завтрак</span>
+        </label>
+        <label class="toggle">
+          <input type="checkbox" data-meal="snack1" checked />
+          <span>Перекус (утро)</span>
+        </label>
+        <label class="toggle">
+          <input type="checkbox" data-meal="lunch" checked disabled />
+          <span>Обед</span>
+        </label>
+        <label class="toggle">
+          <input type="checkbox" data-meal="snack2" checked />
+          <span>Перекус (день)</span>
+        </label>
+        <label class="toggle">
+          <input type="checkbox" data-meal="dinner" checked disabled />
+          <span>Ужин</span>
+        </label>
+      </div>
+    </section>
+
+    <!-- =========================================================
+         БЛОК 4. ДНИ И СОДЕРЖИМОЕ ПРИЁМОВ ПИЩИ
+         Добавление дней, продуктов/блюд, граммовки, напитка, комментария
+         ========================================================= -->
+    <section class="panel" id="days-section">
+      <div class="panel-header">
+        <h2 class="panel-title">Дни меню</h2>
+        <button type="button" class="btn btn--secondary" id="btn-add-day">+ Добавить день</button>
+      </div>
+
+      <!-- Контейнер карточек дней (заполняется из JS) -->
+      <div id="days-container" class="days-container"></div>
+    </section>
+
+    <!-- =========================================================
+         БЛОК 5. ДЕЙСТВИЯ: ОБНОВЛЕНИЕ ПРЕВЬЮ И СКАЧИВАНИЕ
+         ========================================================= -->
+    <section class="panel panel--actions" id="actions-section">
+      <button type="button" class="btn btn--primary" id="btn-preview">Обновить таблицу</button>
+      <button type="button" class="btn btn--download" id="btn-pdf">Скачать PDF</button>
+      <button type="button" class="btn btn--download" id="btn-jpg">Скачать JPG</button>
+    </section>
+
+    <!-- =========================================================
+         БЛОК 6. ПРЕВЬЮ ТАБЛИЦЫ (то, что уйдёт в PDF / JPG)
+         Формат: A4 горизонтальный, белый фон, чёрные рамки
+         ========================================================= -->
+    <section class="panel panel--preview" id="preview-section">
+      <h2 class="panel-title">Превью таблицы</h2>
+
+      <!--
+        Обёртка страниц: каждая .sheet — один лист A4 landscape.
+        Если дни не помещаются по вертикали, JS создаёт несколько .sheet.
+        Внутри дня (строка) page-break не допускается.
+      -->
+      <div id="print-root" class="print-root">
+        <!-- Листы генерируются в app.js -->
+      </div>
+    </section>
+
+  </main>
+
+  <!-- =========================================================
+       БЛОК 7. ШАБЛОН КАРТОЧКИ ДНЯ (скрытый)
+       Клонируется при нажатии «Добавить день»
+       ========================================================= -->
+  <template id="day-card-template">
+    <article class="day-card" data-day-index="">
+      <div class="day-card__header">
+        <label class="field field--narrow">
+          <span class="field-label">Номер дня</span>
+          <input type="number" class="day-number-input" min="1" placeholder="94" />
+        </label>
+        <button type="button" class="btn btn--danger btn-remove-day" title="Удалить день">Удалить день</button>
+      </div>
+
+      <!-- Слоты приёмов пищи внутри дня -->
+      <div class="day-card__meals"></div>
+    </article>
+  </template>
+
+  <!-- =========================================================
+       БЛОК 8. ШАБЛОН ПРИЁМА ПИЩИ ВНУТРИ ДНЯ (скрытый)
+       ========================================================= -->
+  <template id="meal-slot-template">
+    <div class="meal-slot" data-meal-key="">
+      <h3 class="meal-slot__title"></h3>
+
+      <!-- Список позиций: продукт или блюдо -->
+      <div class="items-list"></div>
+
+      <div class="meal-slot__add-btns">
+        <button type="button" class="btn btn--ghost btn-add-product">+ Продукт</button>
+        <button type="button" class="btn btn--ghost btn-add-dish">+ Блюдо</button>
+      </div>
+
+      <label class="field">
+        <span class="field-label">Напиток</span>
+        <input type="text" class="meal-drink" placeholder="Тёплая вода с лимоном" />
+      </label>
+
+      <label class="field">
+        <span class="field-label">Комментарий</span>
+        <textarea class="meal-comment" rows="2" placeholder="Любой напиток не ранее, чем через 40–60 минут"></textarea>
+      </label>
+    </div>
+  </template>
+
+  <!-- =========================================================
+       БЛОК 9. ШАБЛОН ПРОДУКТА (скрытый)
+       Название — жирным, граммовка — обычным
+       ========================================================= -->
+  <template id="product-item-template">
+    <div class="item-row item-row--product" data-type="product">
+      <span class="item-row__badge">Продукт</span>
+      <input type="text" class="item-name" placeholder="Название продукта" />
+      <input type="text" class="item-weight" placeholder="150гр" />
+      <button type="button" class="btn btn--icon btn-remove-item" title="Удалить">×</button>
+    </div>
+  </template>
+
+  <!-- =========================================================
+       БЛОК 10. ШАБЛОН БЛЮДА (скрытый)
+       Название блюда жирным; ингредиенты — списком ниже
+       ========================================================= -->
+  <template id="dish-item-template">
+    <div class="item-row item-row--dish" data-type="dish">
+      <div class="item-row__top">
+        <span class="item-row__badge">Блюдо</span>
+        <input type="text" class="item-name" placeholder="Название блюда" />
+        <button type="button" class="btn btn--icon btn-remove-item" title="Удалить">×</button>
+      </div>
+
+      <div class="ingredients-list"></div>
+
+      <button type="button" class="btn btn--ghost btn-add-ingredient">+ Ингредиент</button>
+    </div>
+  </template>
+
+  <!-- =========================================================
+       БЛОК 11. ШАБЛОН ИНГРЕДИЕНТА БЛЮДА (скрытый)
+       ========================================================= -->
+  <template id="ingredient-template">
+    <div class="ingredient-row">
+      <input type="text" class="ingredient-name" placeholder="Ингредиент" />
+      <input type="text" class="ingredient-weight" placeholder="50гр" />
+      <button type="button" class="btn btn--icon btn-remove-ingredient" title="Удалить">×</button>
+    </div>
+  </template>
+
+</body>
+</html>
