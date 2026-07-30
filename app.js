@@ -24,6 +24,9 @@
   /** Высота полезной области листа A4 landscape (px) под контент таблицы */
   const SHEET_CONTENT_MAX = 730;
 
+  /** Ключ черновика в localStorage браузера */
+  const DRAFT_STORAGE_KEY = "nutrition-menu-draft-v1";
+
   /* ===========================================================
      БЛОК 2. ССЫЛКИ НА DOM
      =========================================================== */
@@ -70,6 +73,7 @@
     row.querySelector(".ingredient-weight").value = weight;
     row.querySelector(".btn-remove-ingredient").addEventListener("click", () => {
       row.remove();
+      notifyFormChange();
     });
     listEl.appendChild(node);
   }
@@ -82,6 +86,7 @@
     row.querySelector(".item-weight").value = weight;
     row.querySelector(".btn-remove-item").addEventListener("click", () => {
       row.remove();
+      notifyFormChange();
     });
     itemsList.appendChild(node);
   }
@@ -95,9 +100,11 @@
     row.querySelector(".item-name").value = name;
     row.querySelector(".btn-remove-item").addEventListener("click", () => {
       row.remove();
+      notifyFormChange();
     });
     row.querySelector(".btn-add-ingredient").addEventListener("click", () => {
       addIngredient(list);
+      notifyFormChange();
     });
 
     ingredients.forEach((ing) => addIngredient(list, ing.name, ing.weight));
@@ -115,9 +122,11 @@
 
     slot.querySelector(".btn-add-product").addEventListener("click", () => {
       addProduct(itemsList);
+      notifyFormChange();
     });
     slot.querySelector(".btn-add-dish").addEventListener("click", () => {
       addDish(itemsList);
+      notifyFormChange();
     });
 
     return slot;
@@ -168,11 +177,31 @@
     card.querySelector(".btn-remove-day").addEventListener("click", () => {
       card.remove();
       if (!els.daysContainer.children.length) addDay();
+      notifyFormChange();
     });
 
     rebuildMealSlots(card);
     els.daysContainer.appendChild(card);
     return card;
+  }
+
+  /** Заполнить слот приёма пищи из сохранённых данных */
+  function fillMealSlot(slot, mealData) {
+    if (!mealData) return;
+    const itemsList = slot.querySelector(".items-list");
+    (mealData.items || []).forEach((item) => {
+      if (item.type === "product") {
+        addProduct(itemsList, item.name || "", item.weight || "");
+      } else if (item.type === "dish") {
+        const ings =
+          item.ingredients && item.ingredients.length
+            ? item.ingredients
+            : [{ name: "", weight: "" }];
+        addDish(itemsList, item.name || "", ings);
+      }
+    });
+    slot.querySelector(".meal-drink").value = mealData.drink || "";
+    slot.querySelector(".meal-comment").value = mealData.comment || "";
   }
 
   /* ===========================================================
@@ -514,26 +543,167 @@
   }
 
   /* ===========================================================
-     БЛОК 9. СБРОС ФОРМЫ
-     Очищает клиента, дни, продукты; возвращает перекусы во включённое состояние
+     БЛОК 9. ЧЕРНОВИК В localStorage
+     Сохраняется при любых изменениях, восстанавливается при открытии
+     =========================================================== */
+
+  /** Сбор полного состояния формы (включая пустые строки) для черновика */
+  function collectMealFromSlotDraft(slot) {
+    const items = [];
+
+    slot.querySelectorAll(".item-row").forEach((row) => {
+      const type = row.dataset.type;
+
+      if (type === "product") {
+        items.push({
+          type: "product",
+          name: row.querySelector(".item-name").value,
+          weight: row.querySelector(".item-weight").value,
+        });
+      }
+
+      if (type === "dish") {
+        const ingredients = [];
+        row.querySelectorAll(".ingredient-row").forEach((ing) => {
+          ingredients.push({
+            name: ing.querySelector(".ingredient-name").value,
+            weight: ing.querySelector(".ingredient-weight").value,
+          });
+        });
+        items.push({
+          type: "dish",
+          name: row.querySelector(".item-name").value,
+          ingredients,
+        });
+      }
+    });
+
+    return {
+      items,
+      drink: slot.querySelector(".meal-drink").value,
+      comment: slot.querySelector(".meal-comment").value,
+    };
+  }
+
+  function collectDraftData() {
+    const mealsEnabled = {};
+    MEAL_ORDER.forEach((key) => {
+      const input = els.mealToggles.querySelector(`input[data-meal="${key}"]`);
+      mealsEnabled[key] = input ? input.checked : true;
+    });
+
+    const days = [];
+    els.daysContainer.querySelectorAll(".day-card").forEach((card) => {
+      const meals = {};
+      card.querySelectorAll(".meal-slot").forEach((slot) => {
+        meals[slot.dataset.mealKey] = collectMealFromSlotDraft(slot);
+      });
+      days.push({
+        dayNumber: card.querySelector(".day-number-input").value,
+        meals,
+      });
+    });
+
+    return {
+      version: 1,
+      lastname: els.lastname.value,
+      firstname: els.firstname.value,
+      week: els.week.value,
+      mealsEnabled,
+      days,
+    };
+  }
+
+  function saveDraft() {
+    try {
+      localStorage.setItem(DRAFT_STORAGE_KEY, JSON.stringify(collectDraftData()));
+    } catch (err) {
+      console.warn("Не удалось сохранить черновик:", err);
+    }
+  }
+
+  function clearDraft() {
+    try {
+      localStorage.removeItem(DRAFT_STORAGE_KEY);
+    } catch (err) {
+      console.warn("Не удалось удалить черновик:", err);
+    }
+  }
+
+  /** Восстановить форму из localStorage. Вернёт true, если черновик найден. */
+  function loadDraft() {
+    let raw;
+    try {
+      raw = localStorage.getItem(DRAFT_STORAGE_KEY);
+    } catch (err) {
+      console.warn("Не удалось прочитать черновик:", err);
+      return false;
+    }
+    if (!raw) return false;
+
+    let draft;
+    try {
+      draft = JSON.parse(raw);
+    } catch (err) {
+      console.warn("Черновик повреждён, игнорируем:", err);
+      clearDraft();
+      return false;
+    }
+
+    els.lastname.value = draft.lastname || "";
+    els.firstname.value = draft.firstname || "";
+    els.week.value = draft.week || "";
+
+    if (draft.mealsEnabled) {
+      MEAL_ORDER.forEach((key) => {
+        const input = els.mealToggles.querySelector(`input[data-meal="${key}"]`);
+        if (!input || input.disabled) return;
+        if (typeof draft.mealsEnabled[key] === "boolean") {
+          input.checked = draft.mealsEnabled[key];
+        }
+      });
+    }
+
+    els.daysContainer.innerHTML = "";
+    const days = Array.isArray(draft.days) && draft.days.length ? draft.days : [{ dayNumber: "", meals: {} }];
+
+    days.forEach((day) => {
+      const card = addDay(day.dayNumber || "");
+      card.querySelectorAll(".meal-slot").forEach((slot) => {
+        fillMealSlot(slot, day.meals && day.meals[slot.dataset.mealKey]);
+      });
+    });
+
+    return true;
+  }
+
+  /** Превью + автосохранение черновика */
+  function notifyFormChange() {
+    renderPreview();
+    saveDraft();
+  }
+
+  /* ===========================================================
+     БЛОК 10. СБРОС ФОРМЫ
+     Очищает клиента, дни, продукты, черновик; включает перекусы
      =========================================================== */
   function resetAll() {
     els.lastname.value = "";
     els.firstname.value = "";
     els.week.value = "";
 
-    // Перекусы снова включены (как при первом открытии)
     els.mealToggles.querySelectorAll("input[data-meal]").forEach((input) => {
       input.checked = true;
     });
 
     els.daysContainer.innerHTML = "";
     addDay();
+    clearDraft();
     renderPreview();
   }
 
   /* ===========================================================
-     БЛОК 10. ИНИЦИАЛИЗАЦИЯ И ОБРАБОТЧИКИ
+     БЛОК 11. ИНИЦИАЛИЗАЦИЯ И ОБРАБОТЧИКИ
      =========================================================== */
   function syncAllDayMealSlots() {
     els.daysContainer.querySelectorAll(".day-card").forEach(rebuildMealSlots);
@@ -542,7 +712,7 @@
   function init() {
     els.btnAddDay.addEventListener("click", () => {
       addDay();
-      renderPreview();
+      notifyFormChange();
     });
     els.btnReset.addEventListener("click", () => {
       if (confirm("Сбросить все данные и дни?")) resetAll();
@@ -550,19 +720,24 @@
     els.btnPdf.addEventListener("click", () => downloadPdf());
     els.btnJpg.addEventListener("click", () => downloadJpg());
 
-    // При смене перекусов — обновляем слоты во всех днях
     els.mealToggles.addEventListener("change", () => {
       syncAllDayMealSlots();
-      renderPreview();
+      notifyFormChange();
     });
 
-    // Превью обновляется сразу при заполнении полей
     document.querySelector(".app-main").addEventListener("input", () => {
-      renderPreview();
+      notifyFormChange();
     });
 
-    // При открытии — один пустой день, без демо-данных
-    addDay();
+    // На случай закрытия вкладки сразу после ввода
+    window.addEventListener("beforeunload", () => {
+      saveDraft();
+    });
+
+    // Восстановить черновик или начать с одного пустого дня
+    if (!loadDraft()) {
+      addDay();
+    }
     renderPreview();
   }
 
