@@ -300,6 +300,7 @@ textarea {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
   gap: 12px;
+  align-items: start; /* карточки не растягиваются по высоте соседа */
 }
 
 .meal-slot {
@@ -326,8 +327,14 @@ textarea {
   gap: 6px;
 }
 
-/* Напиток и комментарий — плотнее друг к другу и к низу карточки */
+/*
+  .field по умолчанию имеет flex: 1 — в колонке слота это
+  раздувало «Напиток» и «Комментарий» на всю свободную высоту.
+*/
 .meal-slot > .field {
+  flex: 0 0 auto;
+  min-width: 0;
+  width: 100%;
   gap: 2px;
 }
 
@@ -341,7 +348,9 @@ textarea {
 }
 
 .meal-slot .meal-comment {
+  /* перебиваем общий textarea { min-height: 52px } */
   min-height: 34px;
+  height: auto;
   resize: vertical;
 }
 
@@ -349,6 +358,7 @@ textarea {
   display: flex;
   flex-direction: column;
   gap: 8px;
+  flex: 0 0 auto;
 }
 
 
