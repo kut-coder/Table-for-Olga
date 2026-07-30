@@ -35,7 +35,7 @@
     daysContainer: document.getElementById("days-container"),
     printRoot: document.getElementById("print-root"),
     btnAddDay: document.getElementById("btn-add-day"),
-    btnPreview: document.getElementById("btn-preview"),
+    btnReset: document.getElementById("btn-reset"),
     btnPdf: document.getElementById("btn-pdf"),
     btnJpg: document.getElementById("btn-jpg"),
     tplDay: document.getElementById("day-card-template"),
@@ -514,7 +514,26 @@
   }
 
   /* ===========================================================
-     БЛОК 9. ИНИЦИАЛИЗАЦИЯ И ОБРАБОТЧИКИ
+     БЛОК 9. СБРОС ФОРМЫ
+     Очищает клиента, дни, продукты; возвращает перекусы во включённое состояние
+     =========================================================== */
+  function resetAll() {
+    els.lastname.value = "";
+    els.firstname.value = "";
+    els.week.value = "";
+
+    // Перекусы снова включены (как при первом открытии)
+    els.mealToggles.querySelectorAll("input[data-meal]").forEach((input) => {
+      input.checked = true;
+    });
+
+    els.daysContainer.innerHTML = "";
+    addDay();
+    renderPreview();
+  }
+
+  /* ===========================================================
+     БЛОК 10. ИНИЦИАЛИЗАЦИЯ И ОБРАБОТЧИКИ
      =========================================================== */
   function syncAllDayMealSlots() {
     els.daysContainer.querySelectorAll(".day-card").forEach(rebuildMealSlots);
@@ -525,7 +544,9 @@
       addDay();
       renderPreview();
     });
-    els.btnPreview.addEventListener("click", () => renderPreview());
+    els.btnReset.addEventListener("click", () => {
+      if (confirm("Сбросить все данные и дни?")) resetAll();
+    });
     els.btnPdf.addEventListener("click", () => downloadPdf());
     els.btnJpg.addEventListener("click", () => downloadJpg());
 
