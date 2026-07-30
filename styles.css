@@ -349,12 +349,30 @@ textarea {
   gap: 6px;
 }
 
-/* Те же пропорции, что у .ingredient-row: название широкое, вес 72px (−20%) */
-.product-fields {
+/* Название — гибкое; граммовка — фиксированная ширина (и у продуктов, и у блюд) */
+.product-fields,
+.ingredient-row {
   display: grid;
   grid-template-columns: minmax(0, 1fr) 72px auto;
   gap: 6px;
   align-items: center;
+}
+
+/* Жёстко фиксируем граммовку: иначе input раздувает колонку из‑за min-width */
+.item-weight,
+.ingredient-weight {
+  width: 72px;
+  min-width: 72px;
+  max-width: 72px;
+  box-sizing: border-box;
+  padding-left: 6px;
+  padding-right: 6px;
+}
+
+.item-name,
+.ingredient-name {
+  min-width: 0;
+  width: 100%;
 }
 
 .item-row__top {
@@ -381,13 +399,6 @@ textarea {
   gap: 6px;
   margin-bottom: 8px;
   padding-left: 4px;
-}
-
-.ingredient-row {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) 72px auto;
-  gap: 6px;
-  align-items: center;
 }
 
 
