@@ -306,17 +306,17 @@ textarea {
   background: #fff;
   border: 1px solid var(--border);
   border-radius: 4px;
-  padding: 12px;
+  padding: 10px 10px 8px;
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: 6px;
 }
 
 .meal-slot__title {
   margin: 0;
   font-size: 0.95rem;
   font-weight: 600;
-  padding-bottom: 6px;
+  padding-bottom: 4px;
   border-bottom: 1px solid #eee;
 }
 
@@ -324,6 +324,25 @@ textarea {
   display: flex;
   flex-wrap: wrap;
   gap: 6px;
+}
+
+/* Напиток и комментарий — плотнее друг к другу и к низу карточки */
+.meal-slot > .field {
+  gap: 2px;
+}
+
+.meal-slot > .field + .field {
+  margin-top: -2px;
+}
+
+.meal-slot .meal-drink,
+.meal-slot .meal-comment {
+  padding: 6px 8px;
+}
+
+.meal-slot .meal-comment {
+  min-height: 34px;
+  resize: vertical;
 }
 
 .items-list {
