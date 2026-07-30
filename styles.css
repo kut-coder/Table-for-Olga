@@ -345,7 +345,7 @@ textarea {
 
 .item-row--product {
   display: grid;
-  grid-template-columns: auto 1fr 90px auto;
+  grid-template-columns: auto minmax(0, 1fr) 90px auto;
   gap: 6px;
   align-items: center;
 }
@@ -377,7 +377,7 @@ textarea {
 
 .ingredient-row {
   display: grid;
-  grid-template-columns: 1fr 90px auto;
+  grid-template-columns: minmax(0, 1fr) 90px auto;
   gap: 6px;
   align-items: center;
 }
@@ -541,8 +541,9 @@ textarea {
    БЛОК L. АДАПТИВ ФОРМЫ (экран)
    ============================================================= */
 @media (max-width: 640px) {
+  /* Как у ингредиентов: название широкое, вес фиксированный 90px */
   .item-row--product {
-    grid-template-columns: 1fr auto;
+    grid-template-columns: minmax(0, 1fr) 90px auto;
   }
 
   .item-row--product .item-row__badge {
