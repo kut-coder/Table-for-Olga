@@ -349,10 +349,10 @@ textarea {
   gap: 6px;
 }
 
-/* Те же пропорции, что у .ingredient-row: название широкое, вес 90px */
+/* Те же пропорции, что у .ingredient-row: название широкое, вес 72px (−20%) */
 .product-fields {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 90px auto;
+  grid-template-columns: minmax(0, 1fr) 72px auto;
   gap: 6px;
   align-items: center;
 }
@@ -385,7 +385,7 @@ textarea {
 
 .ingredient-row {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 90px auto;
+  grid-template-columns: minmax(0, 1fr) 72px auto;
   gap: 6px;
   align-items: center;
 }
