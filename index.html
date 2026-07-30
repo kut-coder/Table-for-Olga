@@ -174,9 +174,11 @@
   <template id="product-item-template">
     <div class="item-row item-row--product" data-type="product">
       <span class="item-row__badge">Продукт</span>
-      <input type="text" class="item-name" placeholder="Название продукта" />
-      <input type="text" class="item-weight" placeholder="150гр" />
-      <button type="button" class="btn btn--icon btn-remove-item" title="Удалить">×</button>
+      <div class="product-fields">
+        <input type="text" class="item-name" placeholder="Название продукта" />
+        <input type="text" class="item-weight" placeholder="150гр" />
+        <button type="button" class="btn btn--icon btn-remove-item" title="Удалить">×</button>
+      </div>
     </div>
   </template>
 

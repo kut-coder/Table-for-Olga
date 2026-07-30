@@ -344,15 +344,22 @@ textarea {
 }
 
 .item-row--product {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+/* Те же пропорции, что у .ingredient-row: название широкое, вес 90px */
+.product-fields {
   display: grid;
-  grid-template-columns: auto minmax(0, 1fr) 90px auto;
+  grid-template-columns: minmax(0, 1fr) 90px auto;
   gap: 6px;
   align-items: center;
 }
 
 .item-row__top {
   display: grid;
-  grid-template-columns: auto 1fr auto;
+  grid-template-columns: auto minmax(0, 1fr) auto;
   gap: 6px;
   align-items: center;
   margin-bottom: 8px;
@@ -365,6 +372,7 @@ textarea {
   border-radius: 3px;
   padding: 2px 6px;
   white-space: nowrap;
+  align-self: flex-start;
 }
 
 .ingredients-list {
@@ -541,18 +549,13 @@ textarea {
    БЛОК L. АДАПТИВ ФОРМЫ (экран)
    ============================================================= */
 @media (max-width: 640px) {
-  /* Как у ингредиентов: название широкое, вес фиксированный 90px */
-  .item-row--product {
-    grid-template-columns: minmax(0, 1fr) 90px auto;
-  }
-
-  .item-row--product .item-row__badge {
-    grid-column: 1 / -1;
-  }
-
   .day-card__header {
     flex-direction: column;
     align-items: stretch;
+  }
+
+  .day-card__meals {
+    grid-template-columns: 1fr;
   }
 }
 
