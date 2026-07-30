@@ -514,83 +514,17 @@
   }
 
   /* ===========================================================
-     БЛОК 9. ДЕМО-ДАННЫЕ (чтобы сразу увидеть формат таблицы)
-     =========================================================== */
-  function fillDemoData() {
-    els.lastname.value = "Иванова";
-    els.firstname.value = "Мария";
-    els.week.value = "14";
-
-    // День 94
-    const d1 = addDay("94");
-    const meals1 = {};
-    d1.querySelectorAll(".meal-slot").forEach((s) => {
-      meals1[s.dataset.mealKey] = s;
-    });
-
-    if (meals1.breakfast) {
-      addDish(meals1.breakfast.querySelector(".items-list"), "Смузи", [
-        { name: "кефир 1%", weight: "200мл" },
-        { name: "клубника", weight: "50гр" },
-        { name: "банан", weight: "50гр" },
-        { name: "семена чиа", weight: "5гр" },
-      ]);
-    }
-    if (meals1.snack1) {
-      addProduct(meals1.snack1.querySelector(".items-list"), "Яблоко", "150гр");
-    }
-    if (meals1.lunch) {
-      const list = meals1.lunch.querySelector(".items-list");
-      addDish(list, "Бедро куриное", [{ name: "В сыром виде", weight: "180гр" }]);
-      addProduct(list, "Греча", "70гр");
-      addDish(list, "Салат", [
-        { name: "помидор", weight: "50гр" },
-        { name: "огурец", weight: "50гр" },
-        { name: "зелень", weight: "10гр" },
-      ]);
-      meals1.lunch.querySelector(".meal-drink").value = "Тёплая вода с лимоном";
-    }
-    if (meals1.snack2) {
-      addProduct(meals1.snack2.querySelector(".items-list"), "Творог 5%", "100гр");
-      addProduct(meals1.snack2.querySelector(".items-list"), "Ягоды", "50гр");
-    }
-    if (meals1.dinner) {
-      const list = meals1.dinner.querySelector(".items-list");
-      addDish(list, "Рыба запечённая", [{ name: "филе трески (сырое)", weight: "150гр" }]);
-      addProduct(list, "Овощи на пару", "200гр");
-      meals1.dinner.querySelector(".meal-comment").value =
-        "Любой напиток не ранее, чем через 40–60 минут";
-    }
-
-    // День 95
-    const d2 = addDay("95");
-    const meals2 = {};
-    d2.querySelectorAll(".meal-slot").forEach((s) => {
-      meals2[s.dataset.mealKey] = s;
-    });
-    if (meals2.breakfast) {
-      addProduct(meals2.breakfast.querySelector(".items-list"), "Овсянка", "40гр");
-      addProduct(meals2.breakfast.querySelector(".items-list"), "Яйцо варёное", "2 шт");
-    }
-    if (meals2.lunch) {
-      addProduct(meals2.lunch.querySelector(".items-list"), "Индейка", "150гр");
-      addProduct(meals2.lunch.querySelector(".items-list"), "Рис бурый", "60гр");
-    }
-    if (meals2.dinner) {
-      addProduct(meals2.dinner.querySelector(".items-list"), "Творожная запеканка", "150гр");
-      addProduct(meals2.dinner.querySelector(".items-list"), "Огурец", "100гр");
-    }
-  }
-
-  /* ===========================================================
-     БЛОК 10. ИНИЦИАЛИЗАЦИЯ И ОБРАБОТЧИКИ
+     БЛОК 9. ИНИЦИАЛИЗАЦИЯ И ОБРАБОТЧИКИ
      =========================================================== */
   function syncAllDayMealSlots() {
     els.daysContainer.querySelectorAll(".day-card").forEach(rebuildMealSlots);
   }
 
   function init() {
-    els.btnAddDay.addEventListener("click", () => addDay());
+    els.btnAddDay.addEventListener("click", () => {
+      addDay();
+      renderPreview();
+    });
     els.btnPreview.addEventListener("click", () => renderPreview());
     els.btnPdf.addEventListener("click", () => downloadPdf());
     els.btnJpg.addEventListener("click", () => downloadJpg());
@@ -601,14 +535,13 @@
       renderPreview();
     });
 
-    // Живое обновление превью при вводе (с небольшой задержкой)
-    let timer = null;
+    // Превью обновляется сразу при заполнении полей
     document.querySelector(".app-main").addEventListener("input", () => {
-      clearTimeout(timer);
-      timer = setTimeout(() => renderPreview(), 350);
+      renderPreview();
     });
 
-    fillDemoData();
+    // При открытии — один пустой день, без демо-данных
+    addDay();
     renderPreview();
   }
 
