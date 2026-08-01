@@ -702,6 +702,7 @@
 
   /**
    * Парсит экспорт Health-Diet (.txt).
+   * Важно: в JS \b не работает с кириллицей — не используем его после русских букв.
    * Возвращает { days: [{ date, meals }], skippedMeals: string[] }
    */
   function parseHealthDietTxt(text) {
@@ -713,9 +714,11 @@
     let currentMealKey = null;
     let inNutrients = false;
 
-    const dayRe = /^#\s*Дневник питания за\s+(.+)$/i;
-    const mealRe = /^##\s+(.+?)\s*-\s*ккал\b/i;
-    const productRe = /^\s*\d+\.\s*(.+?):\s*([\d.,]+)\s*г\b/i;
+    const dayRe = /^#\s*Дневник\s+питания\s+за\s+(.+)$/i;
+    // Тире может быть -, – или —; после «ккал» пробел/запятая/конец (не \b)
+    const mealRe = /^##\s+(.+?)\s*[-–—]\s*ккал(?:\s|,|$)/i;
+    const mealOnlyRe = /^##\s+(.+)$/i;
+    const productRe = /^\s*\d+[.)]\s*(.+?):\s*([\d.,]+)\s*г(?:\s|,|$)/i;
     const metaRe = /^##\s*(Цель|Вес|Возраст|Рост)\b/i;
 
     function ensureDay() {
@@ -734,8 +737,31 @@
       return day.meals[key];
     }
 
+    function startMealFromTitle(titleRaw) {
+      const title = String(titleRaw || "")
+        .replace(/\s*[-–—]\s*ккал.*$/i, "")
+        .trim();
+      if (!title) return false;
+      if (/^(Цель|Вес|Возраст|Рост)\b/i.test(title)) {
+        currentMealKey = null;
+        inNutrients = true;
+        return true;
+      }
+      const key = mapHdMealKey(title);
+      if (!key) {
+        skippedMeals.add(title);
+        currentMealKey = null;
+        return true;
+      }
+      inNutrients = false;
+      currentMealKey = key;
+      ensureMeal(key);
+      return true;
+    }
+
     lines.forEach((line) => {
-      const trimmed = line.trim();
+      // Убираем неразрывные пробелы
+      const trimmed = line.replace(/\u00A0/g, " ").trim();
       if (!trimmed) return;
 
       const dayMatch = trimmed.match(dayRe);
@@ -747,7 +773,7 @@
         return;
       }
 
-      if (/^Нутриенты:/i.test(trimmed) || /^Итого за день/i.test(trimmed)) {
+      if (/^Нутриенты\s*:/i.test(trimmed) || /^Итого\s+за\s+день/i.test(trimmed)) {
         currentMealKey = null;
         inNutrients = true;
         return;
@@ -765,17 +791,19 @@
 
       const mealMatch = trimmed.match(mealRe);
       if (mealMatch) {
-        inNutrients = false;
-        const title = mealMatch[1].trim();
-        const key = mapHdMealKey(title);
-        if (!key) {
-          skippedMeals.add(title);
-          currentMealKey = null;
+        startMealFromTitle(mealMatch[1]);
+        return;
+      }
+
+      // Запасной вариант: ## ЗАВТРАК без «- ккал»
+      const mealOnlyMatch = trimmed.match(mealOnlyRe);
+      if (mealOnlyMatch) {
+        const maybeTitle = mealOnlyMatch[1].trim();
+        if (mapHdMealKey(maybeTitle.replace(/\s*[-–—]\s*ккал.*$/i, "").trim()) ||
+            /^(Цель|Вес|Возраст|Рост)\b/i.test(maybeTitle)) {
+          startMealFromTitle(maybeTitle);
           return;
         }
-        currentMealKey = key;
-        ensureMeal(key);
-        return;
       }
 
       if (!currentMealKey) return;
@@ -789,7 +817,6 @@
       }
     });
 
-    // Убрать дни без продуктов
     const nonEmptyDays = days.filter((day) =>
       Object.values(day.meals).some((m) => m.products && m.products.length)
     );
@@ -798,6 +825,37 @@
       days: nonEmptyDays,
       skippedMeals: Array.from(skippedMeals),
     };
+  }
+
+  function looksLikeHealthDietTxt(text) {
+    const t = String(text || "");
+    return (
+      /Дневник\s+питания/i.test(t) ||
+      /##\s*.+ккал/i.test(t) ||
+      /^\s*\d+[.)]\s*.+:\s*[\d.,]+\s*г/m.test(t)
+    );
+  }
+
+  async function readImportFileText(file) {
+    const buf = await file.arrayBuffer();
+    const utf8 = new TextDecoder("utf-8").decode(buf);
+    if (looksLikeHealthDietTxt(utf8) && parseHealthDietTxt(utf8).days.length) {
+      return utf8;
+    }
+    // Частый случай экспорта Windows: CP1251
+    let cp1251 = "";
+    try {
+      cp1251 = new TextDecoder("windows-1251").decode(buf);
+      if (looksLikeHealthDietTxt(cp1251) && parseHealthDietTxt(cp1251).days.length) {
+        return cp1251;
+      }
+    } catch (err) {
+      /* ignore */
+    }
+    // Если UTF-8 хоть как-то похож — вернём его для понятной ошибки парсера
+    if (looksLikeHealthDietTxt(utf8)) return utf8;
+    if (cp1251 && looksLikeHealthDietTxt(cp1251)) return cp1251;
+    return utf8;
   }
 
   function applyHealthDietImport(parsed) {
@@ -867,14 +925,12 @@
 
   function handleImportFile(file) {
     if (!file) return;
-    const reader = new FileReader();
-    reader.onload = () => {
-      importFromText(String(reader.result || ""), file.name);
-    };
-    reader.onerror = () => {
-      setImportStatus("Не удалось прочитать файл.", "err");
-    };
-    reader.readAsText(file, "UTF-8");
+    readImportFileText(file)
+      .then((text) => importFromText(text, file.name))
+      .catch((err) => {
+        console.error(err);
+        setImportStatus("Не удалось прочитать файл.", "err");
+      });
   }
 
   async function handleImportPaste() {
