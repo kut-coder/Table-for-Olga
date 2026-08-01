@@ -4,9 +4,9 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Программа питания — нутрициолог</title>
-  <link rel="stylesheet" href="styles.css?v=5" />
+  <link rel="stylesheet" href="styles.css?v=6" />
   <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js" defer></script>
-  <script src="app.js?v=5" defer></script>
+  <script src="app.js?v=6" defer></script>
 </head>
 <body>
 
@@ -59,6 +59,26 @@
           />
           <span class="field-hint">Строка: «Программа составлена индивидуально для …»</span>
         </label>
+      </div>
+    </section>
+
+    <!-- =========================================================
+         БЛОК 2b. ИМПОРТ ИЗ HEALTH-DIET (TXT)
+         ========================================================= -->
+    <section class="panel" id="import-section">
+      <h2 class="panel-title">Импорт из Health-Diet</h2>
+      <p class="panel-hint">
+        Экспортируйте дневник на сайте в формате <strong>txt</strong> (день или период)
+        и загрузите файл сюда. Подставятся продукты и граммы; названия блюд можно дописать вручную.
+      </p>
+
+      <div class="import-row">
+        <label class="btn btn--secondary import-file-btn">
+          Выбрать TXT-файл
+          <input type="file" id="import-file" accept=".txt,text/plain" hidden />
+        </label>
+        <button type="button" class="btn btn--secondary" id="btn-import-paste">Вставить из буфера</button>
+        <span class="import-status" id="import-status" aria-live="polite"></span>
       </div>
     </section>
 

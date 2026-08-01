@@ -118,6 +118,33 @@ body {
   align-items: center;
 }
 
+.import-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  align-items: center;
+}
+
+.import-file-btn {
+  display: inline-flex;
+  align-items: center;
+  cursor: pointer;
+  margin: 0;
+}
+
+.import-status {
+  font-size: 0.88rem;
+  color: var(--muted);
+}
+
+.import-status--ok {
+  color: var(--green-dark);
+}
+
+.import-status--err {
+  color: var(--danger);
+}
+
 .panel--preview {
   overflow-x: auto;
 }

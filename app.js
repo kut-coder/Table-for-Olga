@@ -1,7 +1,7 @@
 /**
  * =============================================================
  * Программа питания — форма, превью A4 landscape, PDF / JPG
- * Этап 1: макет как в эталонном документе
+ * Этап 1: макет · Этап 2: импорт TXT из Health-Diet
  * =============================================================
  */
 
@@ -19,6 +19,19 @@
     lunch: "Обед",
     snack2: "Дневной перекус",
     dinner: "Ужин",
+  };
+
+  /** Сопоставление заголовков Health-Diet → ключи формы */
+  const HD_MEAL_MAP = {
+    завтрак: "breakfast",
+    "утренний перекус": "snack1",
+    "перекус утром": "snack1",
+    обед: "lunch",
+    "дневной перекус": "snack2",
+    полдник: "snack2",
+    "перекус днем": "snack2",
+    "перекус днём": "snack2",
+    ужин: "dinner",
   };
 
   /** Порядковые для месяца (м.р.) и недели (ж.р.) */
@@ -128,6 +141,9 @@
     btnReset: document.getElementById("btn-reset"),
     btnPdf: document.getElementById("btn-pdf"),
     btnJpg: document.getElementById("btn-jpg"),
+    importFile: document.getElementById("import-file"),
+    btnImportPaste: document.getElementById("btn-import-paste"),
+    importStatus: document.getElementById("import-status"),
     tplDay: document.getElementById("day-card-template"),
     tplMeal: document.getElementById("meal-slot-template"),
     tplProduct: document.getElementById("product-item-template"),
@@ -652,7 +668,238 @@
   }
 
   /* ===========================================================
-     БЛОК 9. СБРОС И ИНИЦИАЛИЗАЦИЯ
+     БЛОК 9. ИМПОРТ TXT ИЗ HEALTH-DIET
+     =========================================================== */
+  function setImportStatus(message, kind) {
+    if (!els.importStatus) return;
+    els.importStatus.textContent = message || "";
+    els.importStatus.className =
+      "import-status" +
+      (kind === "ok" ? " import-status--ok" : "") +
+      (kind === "err" ? " import-status--err" : "");
+  }
+
+  function normalizeHdMealTitle(raw) {
+    return String(raw || "")
+      .trim()
+      .toLowerCase()
+      .replace(/\s+/g, " ");
+  }
+
+  function mapHdMealKey(title) {
+    const n = normalizeHdMealTitle(title);
+    if (HD_MEAL_MAP[n]) return HD_MEAL_MAP[n];
+    // Частичные совпадения
+    if (n.includes("утренн") && n.includes("перекус")) return "snack1";
+    if (n.includes("дневн") && n.includes("перекус")) return "snack2";
+    if (n === "перекус") return "snack1";
+    if (n.includes("завтрак")) return "breakfast";
+    if (n.includes("обед")) return "lunch";
+    if (n.includes("ужин")) return "dinner";
+    if (n.includes("полдник")) return "snack2";
+    return null;
+  }
+
+  /**
+   * Парсит экспорт Health-Diet (.txt).
+   * Возвращает { days: [{ date, meals }], skippedMeals: string[] }
+   */
+  function parseHealthDietTxt(text) {
+    const lines = String(text || "").replace(/^\uFEFF/, "").split(/\r?\n/);
+    const days = [];
+    const skippedMeals = new Set();
+
+    let currentDay = null;
+    let currentMealKey = null;
+    let inNutrients = false;
+
+    const dayRe = /^#\s*Дневник питания за\s+(.+)$/i;
+    const mealRe = /^##\s+(.+?)\s*-\s*ккал\b/i;
+    const productRe = /^\s*\d+\.\s*(.+?):\s*([\d.,]+)\s*г\b/i;
+    const metaRe = /^##\s*(Цель|Вес|Возраст|Рост)\b/i;
+
+    function ensureDay() {
+      if (!currentDay) {
+        currentDay = { date: "", meals: {} };
+        days.push(currentDay);
+      }
+      return currentDay;
+    }
+
+    function ensureMeal(key) {
+      const day = ensureDay();
+      if (!day.meals[key]) {
+        day.meals[key] = { dishName: "", products: [], comment: "" };
+      }
+      return day.meals[key];
+    }
+
+    lines.forEach((line) => {
+      const trimmed = line.trim();
+      if (!trimmed) return;
+
+      const dayMatch = trimmed.match(dayRe);
+      if (dayMatch) {
+        currentDay = { date: dayMatch[1].trim(), meals: {} };
+        days.push(currentDay);
+        currentMealKey = null;
+        inNutrients = false;
+        return;
+      }
+
+      if (/^Нутриенты:/i.test(trimmed) || /^Итого за день/i.test(trimmed)) {
+        currentMealKey = null;
+        inNutrients = true;
+        return;
+      }
+
+      if (metaRe.test(trimmed)) {
+        currentMealKey = null;
+        inNutrients = true;
+        return;
+      }
+
+      if (inNutrients && !trimmed.startsWith("##") && !trimmed.startsWith("#")) {
+        return;
+      }
+
+      const mealMatch = trimmed.match(mealRe);
+      if (mealMatch) {
+        inNutrients = false;
+        const title = mealMatch[1].trim();
+        const key = mapHdMealKey(title);
+        if (!key) {
+          skippedMeals.add(title);
+          currentMealKey = null;
+          return;
+        }
+        currentMealKey = key;
+        ensureMeal(key);
+        return;
+      }
+
+      if (!currentMealKey) return;
+
+      const productMatch = trimmed.match(productRe);
+      if (productMatch) {
+        const name = productMatch[1].trim();
+        const amount = productMatch[2].replace(",", ".").trim();
+        const weight = `${amount} г`;
+        ensureMeal(currentMealKey).products.push({ name, weight });
+      }
+    });
+
+    // Убрать дни без продуктов
+    const nonEmptyDays = days.filter((day) =>
+      Object.values(day.meals).some((m) => m.products && m.products.length)
+    );
+
+    return {
+      days: nonEmptyDays,
+      skippedMeals: Array.from(skippedMeals),
+    };
+  }
+
+  function applyHealthDietImport(parsed) {
+    if (!parsed.days.length) {
+      throw new Error("В файле не найдено ни одного дня с продуктами.");
+    }
+
+    const usedMeals = new Set();
+    parsed.days.forEach((day) => {
+      Object.keys(day.meals).forEach((key) => {
+        if (day.meals[key].products.length) usedMeals.add(key);
+      });
+    });
+
+    // Перекусы включаем только если они есть в импорте
+    const snack1 = els.mealToggles.querySelector('input[data-meal="snack1"]');
+    const snack2 = els.mealToggles.querySelector('input[data-meal="snack2"]');
+    if (snack1) snack1.checked = usedMeals.has("snack1");
+    if (snack2) snack2.checked = usedMeals.has("snack2");
+
+    els.daysContainer.innerHTML = "";
+    parsed.days.forEach((day) => {
+      addDay(day.meals);
+    });
+
+    notifyFormChange();
+
+    const snackNote = [];
+    if (!usedMeals.has("snack1")) snackNote.push("утренний перекус выключен");
+    if (!usedMeals.has("snack2")) snackNote.push("дневной перекус выключен");
+
+    let msg = `Импортировано дней: ${parsed.days.length}`;
+    if (snackNote.length) msg += ` (${snackNote.join(", ")})`;
+    if (parsed.skippedMeals.length) {
+      msg += `. Пропущены приёмы: ${parsed.skippedMeals.join(", ")}`;
+    }
+    return msg;
+  }
+
+  async function importFromText(text, sourceLabel) {
+    try {
+      const hasContent = els.daysContainer.querySelector(".item-name, .meal-dish-name");
+      const filled =
+        hasContent &&
+        Array.from(els.daysContainer.querySelectorAll(".item-name, .meal-dish-name")).some(
+          (el) => el.value.trim()
+        );
+
+      if (filled) {
+        const ok = confirm(
+          "Импорт заменит текущие дни меню. Данные клиента (ФИО, месяц, неделя) сохранятся. Продолжить?"
+        );
+        if (!ok) {
+          setImportStatus("Импорт отменён.", "");
+          return;
+        }
+      }
+
+      const parsed = parseHealthDietTxt(text);
+      const msg = applyHealthDietImport(parsed);
+      setImportStatus(msg + (sourceLabel ? ` ← ${sourceLabel}` : ""), "ok");
+    } catch (err) {
+      console.error(err);
+      setImportStatus(err.message || "Ошибка импорта.", "err");
+    }
+  }
+
+  function handleImportFile(file) {
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = () => {
+      importFromText(String(reader.result || ""), file.name);
+    };
+    reader.onerror = () => {
+      setImportStatus("Не удалось прочитать файл.", "err");
+    };
+    reader.readAsText(file, "UTF-8");
+  }
+
+  async function handleImportPaste() {
+    try {
+      if (!navigator.clipboard || !navigator.clipboard.readText) {
+        const manual = prompt("Вставьте сюда текст экспорта Health-Diet (txt):");
+        if (manual == null) return;
+        await importFromText(manual, "буфер");
+        return;
+      }
+      const text = await navigator.clipboard.readText();
+      if (!text.trim()) {
+        setImportStatus("Буфер обмена пуст.", "err");
+        return;
+      }
+      await importFromText(text, "буфер");
+    } catch (err) {
+      const manual = prompt("Не удалось прочитать буфер. Вставьте текст экспорта вручную:");
+      if (manual == null) return;
+      await importFromText(manual, "вставка");
+    }
+  }
+
+  /* ===========================================================
+     БЛОК 10. СБРОС И ИНИЦИАЛИЗАЦИЯ
      =========================================================== */
   function resetAll() {
     els.lastname.value = "";
@@ -689,6 +936,17 @@
     });
     els.btnPdf.addEventListener("click", () => downloadPdf());
     els.btnJpg.addEventListener("click", () => downloadJpg());
+
+    if (els.importFile) {
+      els.importFile.addEventListener("change", () => {
+        const file = els.importFile.files && els.importFile.files[0];
+        handleImportFile(file);
+        els.importFile.value = "";
+      });
+    }
+    if (els.btnImportPaste) {
+      els.btnImportPaste.addEventListener("click", () => handleImportPaste());
+    }
 
     els.mealToggles.addEventListener("change", () => {
       syncAllDayMealSlots();
