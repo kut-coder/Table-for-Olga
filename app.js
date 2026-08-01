@@ -1,7 +1,7 @@
 /**
  * =============================================================
- * Таблица меню для нутрициолога
- * Логика формы, рендер таблицы, скачивание PDF / JPG
+ * Программа питания — форма, превью A4 landscape, PDF / JPG
+ * Этап 1: макет как в эталонном документе
  * =============================================================
  */
 
@@ -9,30 +9,116 @@
   "use strict";
 
   /* ===========================================================
-     БЛОК 1. КОНСТАНТЫ И СЛОВАРИ
+     БЛОК 1. КОНСТАНТЫ
      =========================================================== */
   const MEAL_ORDER = ["breakfast", "snack1", "lunch", "snack2", "dinner"];
 
   const MEAL_LABELS = {
     breakfast: "Завтрак",
-    snack1: "Перекус",
+    snack1: "Утренний перекус",
     lunch: "Обед",
-    snack2: "Перекус",
+    snack2: "Дневной перекус",
     dinner: "Ужин",
   };
 
-  /** Высота полезной области листа A4 landscape (px) под контент таблицы */
-  const SHEET_CONTENT_MAX = 730;
+  /** Порядковые для месяца (м.р.) и недели (ж.р.) */
+  const MONTH_ORD = [
+    "",
+    "Первый",
+    "Второй",
+    "Третий",
+    "Четвёртый",
+    "Пятый",
+    "Шестой",
+    "Седьмой",
+    "Восьмой",
+    "Девятый",
+    "Десятый",
+    "Одиннадцатый",
+    "Двенадцатый",
+    "Тринадцатый",
+    "Четырнадцатый",
+    "Пятнадцатый",
+    "Шестнадцатый",
+    "Семнадцатый",
+    "Восемнадцатый",
+    "Девятнадцатый",
+    "Двадцатый",
+  ];
 
-  /** Ключ черновика в localStorage браузера */
-  const DRAFT_STORAGE_KEY = "nutrition-menu-draft-v1";
+  const WEEK_ORD = [
+    "",
+    "Первая",
+    "Вторая",
+    "Третья",
+    "Четвёртая",
+    "Пятая",
+    "Шестая",
+    "Седьмая",
+    "Восьмая",
+    "Девятая",
+    "Десятая",
+    "Одиннадцатая",
+    "Двенадцатая",
+    "Тринадцатая",
+    "Четырнадцатая",
+    "Пятнадцатая",
+    "Шестнадцатая",
+    "Семнадцатая",
+    "Восемнадцатая",
+    "Девятнадцатая",
+    "Двадцатая",
+  ];
+
+  const FOOTER_BLOCKS = [
+    {
+      title: "ПИТЬЕВОЙ РЕЖИМ",
+      items: [
+        "Дневная норма воды — 2 литра.",
+        "Каждый час 200–250 мл небольшими глотками.",
+        "Основной объём — до 18:30, далее по жажде.",
+        "Зелёный чай без сахара входит в объём.",
+        "На чашку кофе дополнительно 100 мл воды.",
+        "При нагрузках дополнительно 0,2–0,5 л.",
+      ],
+    },
+    {
+      title: "РЕЖИМ ПИТАНИЯ",
+      items: [
+        "Рекомендуемый вес порции — до 250 г.",
+        "Если еды больше, разделите порцию.",
+        "Вторую часть съешьте позже.",
+        "Особенно это касается обедов.",
+        "Интервал между приёмами пищи — 3–3,5 часа.",
+      ],
+    },
+    {
+      title: "РАЗРЕШЁННЫЕ НАПИТКИ",
+      items: [
+        "Вода.",
+        "Зелёный чай.",
+        "Травяной чай.",
+        "Ромашковый чай.",
+        "Чёрный кофе без сахара.",
+        "Тёплая вода с лимоном.",
+      ],
+    },
+  ];
+
+  const AUTHOR_LINE = "Авторская программа питания Ольги Башаран";
+
+  /** Сколько дней-колонок комфортно на одном листе */
+  const DAYS_PER_PAGE = 7;
+
+  const DRAFT_STORAGE_KEY = "nutrition-menu-draft-v2";
 
   /* ===========================================================
-     БЛОК 2. ССЫЛКИ НА DOM
+     БЛОК 2. DOM
      =========================================================== */
   const els = {
     lastname: document.getElementById("client-lastname"),
     firstname: document.getElementById("client-firstname"),
+    month: document.getElementById("month-number"),
     week: document.getElementById("week-number"),
     mealToggles: document.getElementById("meal-toggles"),
     daysContainer: document.getElementById("days-container"),
@@ -44,13 +130,10 @@
     tplDay: document.getElementById("day-card-template"),
     tplMeal: document.getElementById("meal-slot-template"),
     tplProduct: document.getElementById("product-item-template"),
-    tplDish: document.getElementById("dish-item-template"),
-    tplIngredient: document.getElementById("ingredient-template"),
   };
 
   /* ===========================================================
-     БЛОК 3. АКТИВНЫЕ ПРИЁМЫ ПИЩИ
-     Перекусы можно отключить — колонки не появятся в таблице
+     БЛОК 3. ПРИЁМЫ ПИЩИ И ПАДЕЖИ
      =========================================================== */
   function getActiveMeals() {
     const active = [];
@@ -61,24 +144,43 @@
     return active;
   }
 
-  /* ===========================================================
-     БЛОК 4. СОЗДАНИЕ ЭЛЕМЕНТОВ ФОРМЫ
-     =========================================================== */
-
-  /** Добавить ингредиент в блюдо */
-  function addIngredient(listEl, name = "", weight = "") {
-    const node = els.tplIngredient.content.cloneNode(true);
-    const row = node.querySelector(".ingredient-row");
-    row.querySelector(".ingredient-name").value = name;
-    row.querySelector(".ingredient-weight").value = weight;
-    row.querySelector(".btn-remove-ingredient").addEventListener("click", () => {
-      row.remove();
-      notifyFormChange();
-    });
-    listEl.appendChild(node);
+  function monthPhrase(n) {
+    const num = parseInt(n, 10);
+    if (!num || num < 1) return "";
+    if (MONTH_ORD[num]) return `${MONTH_ORD[num]} месяц сопровождения`;
+    return `${num} месяц сопровождения`;
   }
 
-  /** Добавить продукт в приём пищи */
+  function weekPhrase(n) {
+    const num = parseInt(n, 10);
+    if (!num || num < 1) return "";
+    if (WEEK_ORD[num]) return `${WEEK_ORD[num]} неделя`;
+    return `${num} неделя`;
+  }
+
+  function periodLine(month, week) {
+    const parts = [monthPhrase(month), weekPhrase(week)].filter(Boolean);
+    return parts.join(" · ");
+  }
+
+  /** ФИО для шапки: ИМЯ ФАМИЛИЯ в верхнем регистре, как в эталоне */
+  function clientHeaderName(lastname, firstname) {
+    return [firstname, lastname]
+      .filter(Boolean)
+      .join(" ")
+      .trim()
+      .toUpperCase();
+  }
+
+  /** «для Галины Поташевой» — имя + фамилия в род. падеже упрощённо */
+  function clientDativePhrase(lastname, firstname) {
+    const name = [firstname, lastname].filter(Boolean).join(" ").trim();
+    return name;
+  }
+
+  /* ===========================================================
+     БЛОК 4. ЭЛЕМЕНТЫ ФОРМЫ
+     =========================================================== */
   function addProduct(itemsList, name = "", weight = "") {
     const node = els.tplProduct.content.cloneNode(true);
     const row = node.querySelector(".item-row");
@@ -91,27 +193,6 @@
     itemsList.appendChild(node);
   }
 
-  /** Добавить блюдо с ингредиентами */
-  function addDish(itemsList, name = "", ingredients = [{ name: "", weight: "" }]) {
-    const node = els.tplDish.content.cloneNode(true);
-    const row = node.querySelector(".item-row");
-    const list = row.querySelector(".ingredients-list");
-
-    row.querySelector(".item-name").value = name;
-    row.querySelector(".btn-remove-item").addEventListener("click", () => {
-      row.remove();
-      notifyFormChange();
-    });
-    row.querySelector(".btn-add-ingredient").addEventListener("click", () => {
-      addIngredient(list);
-      notifyFormChange();
-    });
-
-    ingredients.forEach((ing) => addIngredient(list, ing.name, ing.weight));
-    itemsList.appendChild(node);
-  }
-
-  /** Создать слот одного приёма пищи внутри дня */
   function createMealSlot(mealKey) {
     const node = els.tplMeal.content.cloneNode(true);
     const slot = node.querySelector(".meal-slot");
@@ -119,153 +200,128 @@
     slot.querySelector(".meal-slot__title").textContent = MEAL_LABELS[mealKey];
 
     const itemsList = slot.querySelector(".items-list");
-
     slot.querySelector(".btn-add-product").addEventListener("click", () => {
       addProduct(itemsList);
-      notifyFormChange();
-    });
-    slot.querySelector(".btn-add-dish").addEventListener("click", () => {
-      addDish(itemsList);
       notifyFormChange();
     });
 
     return slot;
   }
 
-  /** Пересобрать слоты приёмов пищи в карточке дня (после смены чекбоксов) */
-  function rebuildMealSlots(dayCard) {
-    const container = dayCard.querySelector(".day-card__meals");
-    const prevData = collectMealSlotsData(dayCard);
-    container.innerHTML = "";
-
-    getActiveMeals().forEach((key) => {
-      const slot = createMealSlot(key);
-      container.appendChild(slot);
-
-      // Восстановить ранее введённые данные, если приём пищи остался
-      const saved = prevData[key];
-      if (!saved) return;
-
-      const itemsList = slot.querySelector(".items-list");
-      saved.items.forEach((item) => {
-        if (item.type === "product") {
-          addProduct(itemsList, item.name, item.weight);
-        } else if (item.type === "dish") {
-          addDish(itemsList, item.name, item.ingredients.length ? item.ingredients : [{ name: "", weight: "" }]);
-        }
-      });
-      slot.querySelector(".meal-drink").value = saved.drink || "";
-      slot.querySelector(".meal-comment").value = saved.comment || "";
-    });
-  }
-
-  /** Считать данные слотов дня (для восстановления после переключения перекусов) */
-  function collectMealSlotsData(dayCard) {
-    const data = {};
-    dayCard.querySelectorAll(".meal-slot").forEach((slot) => {
-      data[slot.dataset.mealKey] = collectMealFromSlot(slot);
-    });
-    return data;
-  }
-
-  /** Добавить карточку дня */
-  function addDay(dayNumber = "") {
-    const node = els.tplDay.content.cloneNode(true);
-    const card = node.querySelector(".day-card");
-    card.querySelector(".day-number-input").value = dayNumber;
-
-    card.querySelector(".btn-remove-day").addEventListener("click", () => {
-      card.remove();
-      if (!els.daysContainer.children.length) addDay();
-      notifyFormChange();
-    });
-
-    rebuildMealSlots(card);
-    els.daysContainer.appendChild(card);
-    return card;
-  }
-
-  /** Заполнить слот приёма пищи из сохранённых данных */
   function fillMealSlot(slot, mealData) {
     if (!mealData) return;
+    slot.querySelector(".meal-dish-name").value = mealData.dishName || "";
     const itemsList = slot.querySelector(".items-list");
-    (mealData.items || []).forEach((item) => {
-      if (item.type === "product") {
-        addProduct(itemsList, item.name || "", item.weight || "");
-      } else if (item.type === "dish") {
-        const ings =
-          item.ingredients && item.ingredients.length
-            ? item.ingredients
-            : [{ name: "", weight: "" }];
-        addDish(itemsList, item.name || "", ings);
-      }
+    itemsList.innerHTML = "";
+    (mealData.products || []).forEach((p) => {
+      addProduct(itemsList, p.name || "", p.weight || "");
     });
-    slot.querySelector(".meal-drink").value = mealData.drink || "";
     slot.querySelector(".meal-comment").value = mealData.comment || "";
   }
 
-  /* ===========================================================
-     БЛОК 5. СБОР ДАННЫХ ИЗ ФОРМЫ
-     Пустые поля не попадают в итоговую таблицу
-     =========================================================== */
   function collectMealFromSlot(slot) {
-    const items = [];
-
+    const products = [];
     slot.querySelectorAll(".item-row").forEach((row) => {
-      const type = row.dataset.type;
       const name = row.querySelector(".item-name").value.trim();
-
-      if (type === "product") {
-        const weight = row.querySelector(".item-weight").value.trim();
-        if (!name && !weight) return;
-        items.push({ type: "product", name, weight });
-      }
-
-      if (type === "dish") {
-        const ingredients = [];
-        row.querySelectorAll(".ingredient-row").forEach((ing) => {
-          const iname = ing.querySelector(".ingredient-name").value.trim();
-          const iweight = ing.querySelector(".ingredient-weight").value.trim();
-          if (!iname && !iweight) return;
-          ingredients.push({ name: iname, weight: iweight });
-        });
-        if (!name && !ingredients.length) return;
-        items.push({ type: "dish", name, ingredients });
-      }
+      const weight = row.querySelector(".item-weight").value.trim();
+      if (!name && !weight) return;
+      products.push({ name, weight });
     });
-
     return {
-      items,
-      drink: slot.querySelector(".meal-drink").value.trim(),
+      dishName: slot.querySelector(".meal-dish-name").value.trim(),
+      products,
       comment: slot.querySelector(".meal-comment").value.trim(),
     };
   }
 
+  function collectMealFromSlotDraft(slot) {
+    const products = [];
+    slot.querySelectorAll(".item-row").forEach((row) => {
+      products.push({
+        name: row.querySelector(".item-name").value,
+        weight: row.querySelector(".item-weight").value,
+      });
+    });
+    return {
+      dishName: slot.querySelector(".meal-dish-name").value,
+      products,
+      comment: slot.querySelector(".meal-comment").value,
+    };
+  }
+
+  function collectMealSlotsData(dayCard) {
+    const data = {};
+    dayCard.querySelectorAll(".meal-slot").forEach((slot) => {
+      data[slot.dataset.mealKey] = collectMealFromSlotDraft(slot);
+    });
+    return data;
+  }
+
+  function rebuildMealSlots(dayCard) {
+    const container = dayCard.querySelector(".day-card__meals");
+    const prev = collectMealSlotsData(dayCard);
+    container.innerHTML = "";
+    getActiveMeals().forEach((key) => {
+      const slot = createMealSlot(key);
+      container.appendChild(slot);
+      if (prev[key]) fillMealSlot(slot, prev[key]);
+    });
+  }
+
+  function renumberDays() {
+    els.daysContainer.querySelectorAll(".day-card").forEach((card, i) => {
+      card.querySelector(".day-card__num").textContent = String(i + 1);
+    });
+  }
+
+  function addDay(prefillMeals) {
+    const node = els.tplDay.content.cloneNode(true);
+    const card = node.querySelector(".day-card");
+
+    card.querySelector(".btn-remove-day").addEventListener("click", () => {
+      card.remove();
+      if (!els.daysContainer.children.length) addDay();
+      renumberDays();
+      notifyFormChange();
+    });
+
+    rebuildMealSlots(card);
+
+    if (prefillMeals) {
+      card.querySelectorAll(".meal-slot").forEach((slot) => {
+        fillMealSlot(slot, prefillMeals[slot.dataset.mealKey]);
+      });
+    }
+
+    els.daysContainer.appendChild(card);
+    renumberDays();
+    return card;
+  }
+
+  /* ===========================================================
+     БЛОК 5. СБОР ДАННЫХ
+     =========================================================== */
   function collectFormData() {
     const lastname = els.lastname.value.trim();
     const firstname = els.firstname.value.trim();
+    const month = els.month.value.trim();
     const week = els.week.value.trim();
     const activeMeals = getActiveMeals();
 
     const days = [];
-    els.daysContainer.querySelectorAll(".day-card").forEach((card) => {
-      const dayNumber = card.querySelector(".day-number-input").value.trim();
+    els.daysContainer.querySelectorAll(".day-card").forEach((card, i) => {
       const meals = {};
       card.querySelectorAll(".meal-slot").forEach((slot) => {
         meals[slot.dataset.mealKey] = collectMealFromSlot(slot);
       });
-      days.push({ dayNumber, meals });
+      days.push({ dayIndex: i + 1, meals });
     });
 
-    return { lastname, firstname, week, activeMeals, days };
+    return { lastname, firstname, month, week, activeMeals, days };
   }
 
   /* ===========================================================
-     БЛОК 6. РЕНДЕР HTML ЯЧЕЙКИ ПРИЁМА ПИЩИ
-     - продукт: жирный + граммовка обычным
-     - блюдо: название жирным, ингредиенты списком
-     - напиток: через строку от продуктов
-     - пустые поля не выводятся
+     БЛОК 6. РЕНДЕР ЯЧЕЙКИ И ТАБЛИЦЫ
      =========================================================== */
   function escapeHtml(str) {
     return String(str)
@@ -275,16 +331,12 @@
       .replace(/"/g, "&quot;");
   }
 
-  /** Формат «название – вес» или только одно из полей */
-  function formatNameWeight(name, weight, nameClass) {
-    const n = escapeHtml(name);
-    const w = escapeHtml(weight);
-    if (name && weight) {
-      return `<span class="${nameClass}">${n}</span> <span class="cell-weight">– ${w}</span>`;
-    }
-    if (name) return `<span class="${nameClass}">${n}</span>`;
-    if (weight) return `<span class="cell-weight">${w}</span>`;
-    return "";
+  /** Нормализация граммовки к виду «40 г» */
+  function formatWeight(weight) {
+    const w = String(weight).trim();
+    if (!w) return "";
+    if (/[а-яА-Яa-zA-Z]/.test(w)) return w;
+    return `${w} г`;
   }
 
   function renderMealCell(mealData) {
@@ -292,42 +344,17 @@
 
     const parts = [];
 
-    mealData.items.forEach((item) => {
-      if (item.type === "product") {
-        const line = formatNameWeight(item.name, item.weight, "cell-product-name");
-        if (line) parts.push(`<div class="cell-item">${line}</div>`);
-      }
-
-      if (item.type === "dish") {
-        let html = '<div class="cell-item">';
-        if (item.name) {
-          html += `<div class="cell-dish-name">${escapeHtml(item.name)}:</div>`;
-        }
-        if (item.ingredients && item.ingredients.length) {
-          html += '<ul class="cell-ingredients">';
-          item.ingredients.forEach((ing) => {
-            // Ингредиенты — обычным шрифтом, через дефис
-            let text = "";
-            if (ing.name && ing.weight) {
-              text = `${escapeHtml(ing.name)} – ${escapeHtml(ing.weight)}`;
-            } else if (ing.name) {
-              text = escapeHtml(ing.name);
-            } else {
-              text = escapeHtml(ing.weight);
-            }
-            html += `<li>${text}</li>`;
-          });
-          html += "</ul>";
-        }
-        html += "</div>";
-        parts.push(html);
-      }
-    });
-
-    // Напиток — всегда через строку от списка продуктов
-    if (mealData.drink) {
-      parts.push(`<div class="cell-drink">${escapeHtml(mealData.drink)}</div>`);
+    if (mealData.dishName) {
+      parts.push(`<div class="cell-dish">${escapeHtml(mealData.dishName)}</div>`);
     }
+
+    (mealData.products || []).forEach((p) => {
+      const name = escapeHtml(p.name || "");
+      const weight = escapeHtml(formatWeight(p.weight || ""));
+      if (!name && !weight) return;
+      const line = name && weight ? `${name} ${weight}` : name || weight;
+      parts.push(`<div class="cell-product">${line}</div>`);
+    });
 
     if (mealData.comment) {
       parts.push(`<div class="cell-comment">${escapeHtml(mealData.comment)}</div>`);
@@ -337,32 +364,62 @@
     return parts.join("");
   }
 
-  /* ===========================================================
-     БЛОК 7. РЕНДЕР ТАБЛИЦЫ И РАЗБИЕНИЕ ПО СТРАНИЦАМ
-     По вертикали: перенос только между днями (строка дня целиком)
-     По горизонтали: подбор размера шрифта
-     =========================================================== */
-  function buildClientHeader(data) {
-    const fullName = [data.lastname, data.firstname].filter(Boolean).join(" ");
-    const weekText = data.week ? `${escapeHtml(data.week)} неделя` : "";
-    return {
-      nameHtml: fullName ? escapeHtml(fullName) : "",
-      weekHtml: weekText,
-    };
+  function buildHeaderHtml(data) {
+    const name = clientHeaderName(data.lastname, data.firstname);
+    const period = periodLine(data.month, data.week);
+    return `
+      <p class="sheet__name">${escapeHtml(name)}</p>
+      <p class="sheet__program">Программа питания</p>
+      <p class="sheet__period">${escapeHtml(period)}</p>
+    `;
   }
 
+  function buildFooterHtml(data) {
+    const cards = FOOTER_BLOCKS.map(
+      (block) => `
+      <div class="footer-card">
+        <h4 class="footer-card__title">${escapeHtml(block.title)}</h4>
+        <ul class="footer-card__list">
+          ${block.items.map((item) => `<li>${escapeHtml(item)}</li>`).join("")}
+        </ul>
+      </div>`
+    ).join("");
+
+    const personal = clientDativePhrase(data.lastname, data.firstname);
+    const personalLine = personal
+      ? `Программа составлена индивидуально для ${escapeHtml(personal)}.`
+      : "";
+
+    return `
+      <div class="sheet-footer">${cards}</div>
+      <div class="sheet-sign">
+        <p class="sheet-sign__author">${escapeHtml(AUTHOR_LINE)}</p>
+        <p class="sheet-sign__personal">${personalLine}</p>
+      </div>
+    `;
+  }
+
+  /**
+   * Таблица: строки = приёмы пищи, столбцы = дни
+   */
   function buildTableHtml(data, daySlice) {
-    const headCells = data.activeMeals
-      .map((key) => `<th>${MEAL_LABELS[key]}</th>`)
+    const headDays = daySlice
+      .map((d) => `<th>День ${d.dayIndex}</th>`)
       .join("");
 
-    const rows = daySlice
-      .map((day) => {
-        const dayLabel = day.dayNumber ? `${escapeHtml(day.dayNumber)} день` : "";
-        const mealCells = data.activeMeals
-          .map((key) => `<td class="col-meal">${renderMealCell(day.meals[key])}</td>`)
+    const rows = data.activeMeals
+      .map((mealKey) => {
+        const cells = daySlice
+          .map(
+            (day) =>
+              `<td class="col-day">${renderMealCell(day.meals[mealKey])}</td>`
+          )
           .join("");
-        return `<tr class="day-row"><td class="col-day">${dayLabel}</td>${mealCells}</tr>`;
+        return `
+          <tr>
+            <td class="col-meal">${escapeHtml(MEAL_LABELS[mealKey])}</td>
+            ${cells}
+          </tr>`;
       })
       .join("");
 
@@ -370,8 +427,8 @@
       <table class="menu-table">
         <thead>
           <tr>
-            <th class="col-day"></th>
-            ${headCells}
+            <th class="col-meal">Приём пищи</th>
+            ${headDays}
           </tr>
         </thead>
         <tbody>${rows}</tbody>
@@ -379,28 +436,22 @@
     `;
   }
 
-  function createSheetElement(header, tableHtml) {
+  function createSheet(data, daySlice, { withFooter }) {
     const sheet = document.createElement("div");
     sheet.className = "sheet";
-    sheet.innerHTML = `
-      <p class="sheet__client">${header.nameHtml}</p>
-      <p class="sheet__week">${header.weekHtml}</p>
-      ${tableHtml}
-    `;
+    sheet.innerHTML =
+      buildHeaderHtml(data) +
+      buildTableHtml(data, daySlice) +
+      (withFooter ? buildFooterHtml(data) : "");
     return sheet;
   }
 
-  /**
-   * Подбирает размер шрифта так, чтобы все колонки приёмов пищи
-   * помещались по ширине листа (уменьшает/увеличивает в разумных пределах).
-   */
   function fitFontSize(sheet) {
-    const min = 8;
-    const max = 15;
+    const min = 7.5;
+    const max = 12;
     let size = max;
     sheet.style.fontSize = size + "px";
 
-    // Уменьшаем, пока таблица не перестанет вызывать горизонтальный overflow
     while (size > min) {
       const table = sheet.querySelector(".menu-table");
       if (!table) break;
@@ -410,65 +461,18 @@
     }
   }
 
-  /**
-   * Разбивает дни по листам: если следующий день не помещается
-   * по высоте — переносится на новую страницу целиком.
-   */
-  function paginateDays(data) {
-    const header = buildClientHeader(data);
+  function paginate(data) {
     const pages = [];
-    let remaining = [...data.days];
+    const days = data.days.length ? data.days : [];
+    if (!days.length) return pages;
 
-    // Временный скрытый контейнер для измерений
-    const measureHost = document.createElement("div");
-    measureHost.style.cssText =
-      "position:absolute;left:-9999px;top:0;visibility:hidden;";
-    document.body.appendChild(measureHost);
-
-    while (remaining.length) {
-      let fitted = [];
-      let lastGood = null;
-
-      for (let i = 0; i < remaining.length; i++) {
-        const candidate = remaining.slice(0, i + 1);
-        const sheet = createSheetElement(header, buildTableHtml(data, candidate));
-        measureHost.innerHTML = "";
-        measureHost.appendChild(sheet);
-        fitFontSize(sheet);
-
-        const table = sheet.querySelector(".menu-table");
-        const headerBlock =
-          (sheet.querySelector(".sheet__client")?.offsetHeight || 0) +
-          (sheet.querySelector(".sheet__week")?.offsetHeight || 0) +
-          14;
-        const totalH = headerBlock + (table ? table.offsetHeight : 0);
-
-        // Один день всегда остаётся на странице, даже если высоковат
-        if (totalH <= SHEET_CONTENT_MAX || candidate.length === 1) {
-          fitted = candidate;
-          lastGood = sheet;
-        } else {
-          break;
-        }
-      }
-
-      if (!fitted.length) {
-        fitted = [remaining[0]];
-        const sheet = createSheetElement(header, buildTableHtml(data, fitted));
-        measureHost.innerHTML = "";
-        measureHost.appendChild(sheet);
-        fitFontSize(sheet);
-        lastGood = sheet;
-      }
-
-      // Клонируем измеренный лист в результат
-      const finalSheet = lastGood.cloneNode(true);
-      finalSheet.style.fontSize = lastGood.style.fontSize;
-      pages.push(finalSheet);
-      remaining = remaining.slice(fitted.length);
+    for (let i = 0; i < days.length; i += DAYS_PER_PAGE) {
+      const slice = days.slice(i, i + DAYS_PER_PAGE);
+      const isLast = i + DAYS_PER_PAGE >= days.length;
+      const sheet = createSheet(data, slice, { withFooter: isLast });
+      pages.push(sheet);
     }
 
-    measureHost.remove();
     return pages;
   }
 
@@ -483,23 +487,34 @@
     }
 
     if (!data.days.length) {
-      els.printRoot.innerHTML = '<p style="color:#666">Добавьте хотя бы один день.</p>';
+      els.printRoot.innerHTML =
+        '<p style="color:#666">Добавьте хотя бы один день.</p>';
       return data;
     }
 
-    const pages = paginateDays(data);
-    pages.forEach((sheet) => els.printRoot.appendChild(sheet));
+    const measureHost = document.createElement("div");
+    measureHost.style.cssText =
+      "position:absolute;left:-9999px;top:0;visibility:hidden;";
+    document.body.appendChild(measureHost);
+
+    const pages = paginate(data);
+    pages.forEach((sheet) => {
+      measureHost.appendChild(sheet);
+      fitFontSize(sheet);
+      const clone = sheet.cloneNode(true);
+      clone.style.fontSize = sheet.style.fontSize;
+      els.printRoot.appendChild(clone);
+    });
+
+    measureHost.remove();
     return data;
   }
 
   /* ===========================================================
-     БЛОК 8. СКАЧИВАНИЕ PDF И JPG
-     PDF — через диалог печати браузера (Сохранить как PDF)
-     JPG — через html2canvas (по одному листу)
+     БЛОК 7. PDF / JPG
      =========================================================== */
   function downloadPdf() {
     renderPreview();
-    // Даём браузеру отрисовать DOM перед печатью
     requestAnimationFrame(() => {
       setTimeout(() => window.print(), 100);
     });
@@ -509,7 +524,7 @@
     renderPreview();
 
     if (typeof html2canvas !== "function") {
-      alert("Библиотека html2canvas не загрузилась. Проверьте интернет-соединение.");
+      alert("Библиотека html2canvas не загрузилась. Проверьте интернет.");
       return;
     }
 
@@ -520,9 +535,10 @@
     }
 
     const data = collectFormData();
-    const baseName = [data.lastname, data.firstname, data.week ? `неделя-${data.week}` : ""]
-      .filter(Boolean)
-      .join("_") || "menu";
+    const baseName =
+      [data.lastname, data.firstname, data.month ? `мес-${data.month}` : "", data.week ? `нед-${data.week}` : ""]
+        .filter(Boolean)
+        .join("_") || "programma-pitaniya";
 
     for (let i = 0; i < sheets.length; i++) {
       const canvas = await html2canvas(sheets[i], {
@@ -530,61 +546,18 @@
         scale: 2,
         useCORS: true,
       });
-
       const link = document.createElement("a");
       const suffix = sheets.length > 1 ? `_стр${i + 1}` : "";
       link.download = `${baseName}${suffix}.jpg`;
       link.href = canvas.toDataURL("image/jpeg", 0.95);
       link.click();
-
-      // Небольшая пауза между несколькими скачиваниями
       if (sheets.length > 1) await new Promise((r) => setTimeout(r, 300));
     }
   }
 
   /* ===========================================================
-     БЛОК 9. ЧЕРНОВИК В localStorage
-     Сохраняется при любых изменениях, восстанавливается при открытии
+     БЛОК 8. ЧЕРНОВИК
      =========================================================== */
-
-  /** Сбор полного состояния формы (включая пустые строки) для черновика */
-  function collectMealFromSlotDraft(slot) {
-    const items = [];
-
-    slot.querySelectorAll(".item-row").forEach((row) => {
-      const type = row.dataset.type;
-
-      if (type === "product") {
-        items.push({
-          type: "product",
-          name: row.querySelector(".item-name").value,
-          weight: row.querySelector(".item-weight").value,
-        });
-      }
-
-      if (type === "dish") {
-        const ingredients = [];
-        row.querySelectorAll(".ingredient-row").forEach((ing) => {
-          ingredients.push({
-            name: ing.querySelector(".ingredient-name").value,
-            weight: ing.querySelector(".ingredient-weight").value,
-          });
-        });
-        items.push({
-          type: "dish",
-          name: row.querySelector(".item-name").value,
-          ingredients,
-        });
-      }
-    });
-
-    return {
-      items,
-      drink: slot.querySelector(".meal-drink").value,
-      comment: slot.querySelector(".meal-comment").value,
-    };
-  }
-
   function collectDraftData() {
     const mealsEnabled = {};
     MEAL_ORDER.forEach((key) => {
@@ -598,16 +571,14 @@
       card.querySelectorAll(".meal-slot").forEach((slot) => {
         meals[slot.dataset.mealKey] = collectMealFromSlotDraft(slot);
       });
-      days.push({
-        dayNumber: card.querySelector(".day-number-input").value,
-        meals,
-      });
+      days.push({ meals });
     });
 
     return {
-      version: 1,
+      version: 2,
       lastname: els.lastname.value,
       firstname: els.firstname.value,
+      month: els.month.value,
       week: els.week.value,
       mealsEnabled,
       days,
@@ -625,18 +596,17 @@
   function clearDraft() {
     try {
       localStorage.removeItem(DRAFT_STORAGE_KEY);
+      localStorage.removeItem("nutrition-menu-draft-v1");
     } catch (err) {
       console.warn("Не удалось удалить черновик:", err);
     }
   }
 
-  /** Восстановить форму из localStorage. Вернёт true, если черновик найден. */
   function loadDraft() {
     let raw;
     try {
       raw = localStorage.getItem(DRAFT_STORAGE_KEY);
     } catch (err) {
-      console.warn("Не удалось прочитать черновик:", err);
       return false;
     }
     if (!raw) return false;
@@ -645,13 +615,13 @@
     try {
       draft = JSON.parse(raw);
     } catch (err) {
-      console.warn("Черновик повреждён, игнорируем:", err);
       clearDraft();
       return false;
     }
 
     els.lastname.value = draft.lastname || "";
     els.firstname.value = draft.firstname || "";
+    els.month.value = draft.month || "";
     els.week.value = draft.week || "";
 
     if (draft.mealsEnabled) {
@@ -665,31 +635,27 @@
     }
 
     els.daysContainer.innerHTML = "";
-    const days = Array.isArray(draft.days) && draft.days.length ? draft.days : [{ dayNumber: "", meals: {} }];
+    const days =
+      Array.isArray(draft.days) && draft.days.length
+        ? draft.days
+        : [{ meals: {} }];
 
-    days.forEach((day) => {
-      const card = addDay(day.dayNumber || "");
-      card.querySelectorAll(".meal-slot").forEach((slot) => {
-        fillMealSlot(slot, day.meals && day.meals[slot.dataset.mealKey]);
-      });
-    });
-
+    days.forEach((day) => addDay(day.meals || {}));
     return true;
   }
 
-  /** Превью + автосохранение черновика */
   function notifyFormChange() {
     renderPreview();
     saveDraft();
   }
 
   /* ===========================================================
-     БЛОК 10. СБРОС ФОРМЫ
-     Очищает клиента, дни, продукты, черновик; включает перекусы
+     БЛОК 9. СБРОС И ИНИЦИАЛИЗАЦИЯ
      =========================================================== */
   function resetAll() {
     els.lastname.value = "";
     els.firstname.value = "";
+    els.month.value = "";
     els.week.value = "";
 
     els.mealToggles.querySelectorAll("input[data-meal]").forEach((input) => {
@@ -702,9 +668,6 @@
     renderPreview();
   }
 
-  /* ===========================================================
-     БЛОК 11. ИНИЦИАЛИЗАЦИЯ И ОБРАБОТЧИКИ
-     =========================================================== */
   function syncAllDayMealSlots() {
     els.daysContainer.querySelectorAll(".day-card").forEach(rebuildMealSlots);
   }
@@ -729,12 +692,10 @@
       notifyFormChange();
     });
 
-    // На случай закрытия вкладки сразу после ввода
     window.addEventListener("beforeunload", () => {
       saveDraft();
     });
 
-    // Восстановить черновик или начать с одного пустого дня
     if (!loadDraft()) {
       addDay();
     }

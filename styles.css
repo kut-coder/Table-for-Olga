@@ -1,6 +1,5 @@
 /* =============================================================
-   БЛОК A. БАЗОВЫЕ ПЕРЕМЕННЫЕ И СБРОС
-   Минималистичная светлая тема, без сложных эффектов
+   БЛОК A. ПЕРЕМЕННЫЕ И СБРОС
    ============================================================= */
 :root {
   --bg: #f5f5f3;
@@ -14,10 +13,16 @@
   --radius: 6px;
   --gap: 16px;
   --font-ui: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
-  /* Шрифт таблицы — как в печатном меню */
-  --font-table: "Times New Roman", Times, "Liberation Serif", serif;
 
-  /* Размер листа A4 landscape при 96dpi ≈ 1123 × 794 px */
+  /* Цвета эталонного PDF */
+  --green-dark: #2e5e3e;
+  --green-mid: #4f8b5c;
+  --green-soft: #e7f2e9;
+  --green-pale: #f4f9f5;
+  --green-text: #1f3a28;
+
+  --font-sheet: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+
   --a4-w: 1123px;
   --a4-h: 794px;
 }
@@ -44,7 +49,7 @@ body {
 
 
 /* =============================================================
-   БЛОК B. ШАПКА ПРИЛОЖЕНИЯ
+   БЛОК B. ШАПКА И ПАНЕЛИ ФОРМЫ
    ============================================================= */
 .app-header {
   max-width: 1100px;
@@ -65,10 +70,6 @@ body {
   font-size: 0.95rem;
 }
 
-
-/* =============================================================
-   БЛОК C. ОСНОВНАЯ СЕТКА И ПАНЕЛИ ФОРМЫ
-   ============================================================= */
 .app-main {
   max-width: 1100px;
   margin: 0 auto;
@@ -122,7 +123,7 @@ body {
 
 
 /* =============================================================
-   БЛОК D. ПОЛЯ ФОРМЫ
+   БЛОК C. ПОЛЯ ФОРМЫ
    ============================================================= */
 .form-row {
   display: flex;
@@ -173,7 +174,7 @@ textarea {
 
 
 /* =============================================================
-   БЛОК E. ПЕРЕКЛЮЧАТЕЛИ ПРИЁМОВ ПИЩИ
+   БЛОК D. ПЕРЕКЛЮЧАТЕЛИ И КНОПКИ
    ============================================================= */
 .meal-toggles {
   display: flex;
@@ -193,10 +194,6 @@ textarea {
   opacity: 0.7;
 }
 
-
-/* =============================================================
-   БЛОК F. КНОПКИ
-   ============================================================= */
 .btn {
   font: inherit;
   font-size: 0.9rem;
@@ -211,16 +208,6 @@ textarea {
 
 .btn:hover {
   background: #f0f0f0;
-}
-
-.btn--primary {
-  background: var(--accent);
-  color: #fff;
-  border-color: var(--accent);
-}
-
-.btn--primary:hover {
-  background: #000;
 }
 
 .btn--secondary {
@@ -271,7 +258,7 @@ textarea {
 
 
 /* =============================================================
-   БЛОК G. КАРТОЧКИ ДНЕЙ И СЛОТЫ ПРИЁМОВ ПИЩИ
+   БЛОК E. КАРТОЧКИ ДНЕЙ И СЛОТЫ ПРИЁМОВ
    ============================================================= */
 .days-container {
   display: flex;
@@ -288,7 +275,7 @@ textarea {
 
 .day-card__header {
   display: flex;
-  align-items: flex-end;
+  align-items: center;
   justify-content: space-between;
   gap: 12px;
   margin-bottom: 14px;
@@ -296,11 +283,18 @@ textarea {
   border-bottom: 1px solid var(--border);
 }
 
+.day-card__title {
+  margin: 0;
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--green-dark);
+}
+
 .day-card__meals {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
   gap: 12px;
-  align-items: start; /* карточки не растягиваются по высоте соседа */
+  align-items: start;
 }
 
 .meal-slot {
@@ -319,18 +313,9 @@ textarea {
   font-weight: 600;
   padding-bottom: 4px;
   border-bottom: 1px solid #eee;
+  color: var(--green-dark);
 }
 
-.meal-slot__add-btns {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
-}
-
-/*
-  .field по умолчанию имеет flex: 1 — в колонке слота это
-  раздувало «Напиток» и «Комментарий» на всю свободную высоту.
-*/
 .meal-slot > .field {
   flex: 0 0 auto;
   min-width: 0;
@@ -338,58 +323,43 @@ textarea {
   gap: 2px;
 }
 
-.meal-slot > .field + .field {
-  margin-top: -2px;
-}
-
-.meal-slot .meal-drink,
 .meal-slot .meal-comment {
-  padding: 6px 8px;
-}
-
-.meal-slot .meal-comment {
-  /* перебиваем общий textarea { min-height: 52px } */
   min-height: 34px;
   height: auto;
   resize: vertical;
+  padding: 6px 8px;
+}
+
+.meal-slot .meal-dish-name {
+  padding: 6px 8px;
 }
 
 .items-list {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 6px;
   flex: 0 0 auto;
 }
 
 
 /* =============================================================
-   БЛОК H. СТРОКИ ПРОДУКТОВ / БЛЮД / ИНГРЕДИЕНТОВ
+   БЛОК F. СТРОКИ ПРОДУКТОВ
    ============================================================= */
 .item-row {
   border: 1px solid #e5e5e5;
   border-radius: 4px;
-  padding: 8px;
+  padding: 6px;
   background: #fcfcfc;
 }
 
-.item-row--product {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-}
-
-/* Название — гибкое; граммовка — фиксированная ширина (и у продуктов, и у блюд) */
-.product-fields,
-.ingredient-row {
+.product-fields {
   display: grid;
   grid-template-columns: minmax(0, 1fr) 72px auto;
   gap: 6px;
   align-items: center;
 }
 
-/* Жёстко фиксируем граммовку: иначе input раздувает колонку из‑за min-width */
-.item-weight,
-.ingredient-weight {
+.item-weight {
   width: 72px;
   min-width: 72px;
   max-width: 72px;
@@ -398,42 +368,14 @@ textarea {
   padding-right: 6px;
 }
 
-.item-name,
-.ingredient-name {
+.item-name {
   min-width: 0;
   width: 100%;
 }
 
-.item-row__top {
-  display: grid;
-  grid-template-columns: auto minmax(0, 1fr) auto;
-  gap: 6px;
-  align-items: center;
-  margin-bottom: 8px;
-}
-
-.item-row__badge {
-  font-size: 0.7rem;
-  color: var(--muted);
-  border: 1px solid var(--border);
-  border-radius: 3px;
-  padding: 2px 6px;
-  white-space: nowrap;
-  align-self: flex-start;
-}
-
-.ingredients-list {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-  margin-bottom: 8px;
-  padding-left: 4px;
-}
-
 
 /* =============================================================
-   БЛОК I. ПРЕВЬЮ / ПЕЧАТНЫЙ ЛИСТ A4 LANDSCAPE
-   Белый фон, чёрная рамка таблицы, чёрный шрифт
+   БЛОК G. ПРЕВЬЮ / ЛИСТ A4 LANDSCAPE
    ============================================================= */
 .print-root {
   display: flex;
@@ -442,151 +384,187 @@ textarea {
   align-items: flex-start;
 }
 
-/* Один лист A4 горизонтальный */
 .sheet {
   width: var(--a4-w);
   min-height: var(--a4-h);
-  max-height: var(--a4-h);
   background: #fff;
-  color: #000;
-  padding: 18px 22px;
-  border: 1px solid #ccc; /* рамка только для превью на экране */
+  color: var(--green-text);
+  padding: 22px 26px;
+  border: 1px solid #ccc;
   overflow: hidden;
-  font-family: var(--font-table);
-  /* Базовый размер; JS подстроит под ширину колонок */
-  font-size: 13px;
-  line-height: 1.25;
+  font-family: var(--font-sheet);
+  font-size: 11px;
+  line-height: 1.3;
   box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
 }
 
-.sheet__client {
-  margin: 0 0 2px;
-  font-size: 1.15em;
-  font-weight: 400;
-}
-
-.sheet__week {
-  margin: 0 0 10px;
-  font-size: 1em;
-  font-weight: 400;
-}
-
-/* Скрываем пустые заголовки, если поля не заполнены */
-.sheet__client:empty,
-.sheet__week:empty {
-  display: none;
+/* --- Шапка документа --- */
+.sheet__name {
   margin: 0;
+  font-size: 1.85em;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--green-dark);
+  text-align: center;
+}
+
+.sheet__program {
+  margin: 4px 0 0;
+  font-size: 1.15em;
+  font-weight: 600;
+  color: var(--green-mid);
+  text-align: center;
+}
+
+.sheet__period {
+  margin: 4px 0 14px;
+  font-size: 0.95em;
+  color: var(--green-text);
+  text-align: center;
+}
+
+.sheet__name:empty,
+.sheet__period:empty {
+  display: none;
 }
 
 
 /* =============================================================
-   БЛОК J. ТАБЛИЦА МЕНЮ
+   БЛОК H. ТАБЛИЦА МЕНЮ (строки = приёмы, столбцы = дни)
    ============================================================= */
 .menu-table {
   width: 100%;
   border-collapse: collapse;
   table-layout: fixed;
-  color: #000;
+  color: var(--green-text);
   background: #fff;
+  flex: 0 0 auto;
 }
 
 .menu-table th,
 .menu-table td {
-  border: 1px solid #000;
+  border: 1px solid var(--green-mid);
   vertical-align: top;
   padding: 5px 6px;
   word-wrap: break-word;
   overflow-wrap: break-word;
 }
 
-/* Заголовки приёмов пищи и колонка дня — по центру */
-.menu-table th {
+.menu-table thead th {
+  background: var(--green-dark);
+  color: #fff;
   text-align: center;
   vertical-align: middle;
   font-weight: 700;
-  padding: 6px 4px;
-}
-
-.menu-table .col-day {
-  width: 7%;
-  text-align: center;
-  vertical-align: middle;
-  font-weight: 400;
-  white-space: nowrap;
+  padding: 7px 4px;
 }
 
 .menu-table .col-meal {
-  text-align: left;
-  font-weight: 400;
-}
-
-/* --- Форматирование содержимого ячейки --- */
-
-/* Название продукта / блюда — жирным */
-.cell-product-name,
-.cell-dish-name {
+  width: 11%;
+  background: var(--green-mid);
+  color: #fff;
+  text-align: center;
+  vertical-align: middle;
   font-weight: 700;
 }
 
-/* Граммовка — обычным шрифтом */
-.cell-weight {
+.menu-table .col-day {
+  background: var(--green-pale);
+}
+
+.menu-table tbody tr:nth-child(even) .col-day {
+  background: var(--green-soft);
+}
+
+/* Название блюда — жирный курсив */
+.cell-dish {
+  font-weight: 700;
+  font-style: italic;
+  margin-bottom: 3px;
+  color: var(--green-dark);
+}
+
+/* Продукт: обычный шрифт, граммы через пробел */
+.cell-product {
   font-weight: 400;
+  font-style: normal;
+  margin-bottom: 1px;
 }
 
-/* Ингредиенты блюда — список обычным шрифтом */
-.cell-ingredients {
-  margin: 1px 0 4px;
-  padding: 0;
-  list-style: none;
-}
-
-.cell-ingredients li {
+.cell-comment {
+  margin-top: 0.45em;
   font-weight: 400;
-  padding-left: 0;
+  font-style: italic;
+  color: var(--green-text);
+  opacity: 0.9;
 }
 
-.cell-ingredients li::before {
-  content: "- ";
+.cell-empty {
+  min-height: 0.6em;
 }
 
-/* Блок позиции внутри ячейки */
-.cell-item {
+
+/* =============================================================
+   БЛОК I. НИЖНИЕ БЛОКИ (только в конце документа)
+   ============================================================= */
+.sheet-footer {
+  margin-top: 14px;
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 10px;
+}
+
+.footer-card {
+  border: 1px solid var(--green-mid);
+  border-radius: 4px;
+  overflow: hidden;
+  background: var(--green-pale);
+}
+
+.footer-card__title {
+  margin: 0;
+  padding: 6px 8px;
+  background: var(--green-dark);
+  color: #fff;
+  font-size: 0.95em;
+  font-weight: 700;
+  text-align: center;
+  letter-spacing: 0.02em;
+}
+
+.footer-card__list {
+  margin: 0;
+  padding: 8px 10px 8px 22px;
+  color: var(--green-text);
+}
+
+.footer-card__list li {
   margin-bottom: 3px;
 }
 
-.cell-item:last-child {
-  margin-bottom: 0;
+.sheet-sign {
+  margin-top: 12px;
+  text-align: center;
+  color: var(--green-text);
 }
 
-/* Напиток — всегда через строку от списка продуктов */
-.cell-drink {
-  margin-top: 0.85em;
-  font-weight: 400;
+.sheet-sign__author {
+  margin: 0 0 4px;
+  font-weight: 600;
+  color: var(--green-dark);
 }
 
-/* Комментарий — внизу ячейки */
-.cell-comment {
-  margin-top: 0.6em;
-  font-weight: 400;
-}
-
-/* Пустая ячейка приёма пищи */
-.cell-empty {
-  min-height: 1em;
+.sheet-sign__personal {
+  margin: 0;
+  font-size: 0.95em;
 }
 
 
 /* =============================================================
-   БЛОК K. НЕ РАЗРЫВАТЬ ДЕНЬ МЕЖДУ СТРАНИЦАМИ
-   ============================================================= */
-.menu-table tr.day-row {
-  page-break-inside: avoid;
-  break-inside: avoid;
-}
-
-
-/* =============================================================
-   БЛОК L. АДАПТИВ ФОРМЫ (экран)
+   БЛОК J. АДАПТИВ ФОРМЫ
    ============================================================= */
 @media (max-width: 640px) {
   .day-card__header {
@@ -597,12 +575,15 @@ textarea {
   .day-card__meals {
     grid-template-columns: 1fr;
   }
+
+  .sheet-footer {
+    grid-template-columns: 1fr;
+  }
 }
 
 
 /* =============================================================
-   БЛОК M. ПЕЧАТЬ / PDF (A4 landscape)
-   Форма скрывается; печатаются только листы .sheet
+   БЛОК K. ПЕЧАТЬ / PDF — A4 landscape
    ============================================================= */
 @media print {
   @page {
@@ -636,7 +617,6 @@ textarea {
   .sheet {
     width: 100%;
     min-height: auto;
-    max-height: none;
     border: none;
     padding: 0;
     page-break-after: always;
@@ -646,10 +626,5 @@ textarea {
   .sheet:last-child {
     page-break-after: auto;
     break-after: auto;
-  }
-
-  .menu-table tr.day-row {
-    page-break-inside: avoid;
-    break-inside: avoid;
   }
 }
