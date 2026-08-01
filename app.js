@@ -352,19 +352,8 @@
     return `${w} г`;
   }
 
-  function isMealCellEmpty(mealData) {
-    if (!mealData) return true;
-    if ((mealData.dishName || "").trim()) return false;
-    if ((mealData.comment || "").trim()) return false;
-    return !(mealData.products || []).some(
-      (p) => (p.name || "").trim() || (p.weight || "").trim()
-    );
-  }
-
   function renderMealCell(mealData) {
-    if (isMealCellEmpty(mealData)) {
-      return '<div class="cell-empty" aria-hidden="true">—</div>';
-    }
+    if (!mealData) return "";
 
     const parts = [];
 
@@ -434,11 +423,10 @@
     const rows = data.activeMeals
       .map((mealKey) => {
         const cells = daySlice
-          .map((day) => {
-            const meal = day.meals[mealKey];
-            const emptyClass = isMealCellEmpty(meal) ? " col-day--empty" : "";
-            return `<td class="col-day${emptyClass}">${renderMealCell(meal)}</td>`;
-          })
+          .map(
+            (day) =>
+              `<td class="col-day">${renderMealCell(day.meals[mealKey])}</td>`
+          )
           .join("");
         return `
           <tr>
@@ -541,7 +529,7 @@
   function downloadPdf() {
     renderPreview();
     requestAnimationFrame(() => {
-      setTimeout(() => window.print(), 100);
+      setTimeout(() => window.print(), 150);
     });
   }
 
@@ -561,21 +549,82 @@
 
     const data = collectFormData();
     const baseName =
-      [data.lastname, data.firstname, data.month ? `мес-${data.month}` : "", data.week ? `нед-${data.week}` : ""]
+      [
+        data.lastname,
+        data.firstname,
+        data.month ? `мес-${data.month}` : "",
+        data.week ? `нед-${data.week}` : "",
+      ]
         .filter(Boolean)
         .join("_") || "programma-pitaniya";
 
     for (let i = 0; i < sheets.length; i++) {
-      const canvas = await html2canvas(sheets[i], {
-        backgroundColor: "#ffffff",
-        scale: 2,
-        useCORS: true,
-      });
-      const link = document.createElement("a");
-      const suffix = sheets.length > 1 ? `_стр${i + 1}` : "";
-      link.download = `${baseName}${suffix}.jpg`;
-      link.href = canvas.toDataURL("image/jpeg", 0.95);
-      link.click();
+      const sheet = sheets[i];
+      const prev = {
+        border: sheet.style.border,
+        overflow: sheet.style.overflow,
+        maxHeight: sheet.style.maxHeight,
+      };
+      // Как на печати: без рамки превью, без обрезки
+      sheet.style.border = "none";
+      sheet.style.overflow = "visible";
+      sheet.style.maxHeight = "none";
+
+      try {
+        const canvas = await html2canvas(sheet, {
+          backgroundColor: "#ffffff",
+          scale: 2,
+          useCORS: true,
+          logging: false,
+          onclone: (_doc, cloned) => {
+            cloned.style.border = "none";
+            cloned.style.overflow = "visible";
+            cloned.style.maxHeight = "none";
+            cloned.style.background = "#ffffff";
+            cloned.style.fontFamily = 'Georgia, "Times New Roman", Times, serif';
+            // Жёстко фиксируем цвета как в превью (на случай var())
+            cloned.querySelectorAll(".menu-table thead th").forEach((el) => {
+              el.style.background = "#2e5e3e";
+              el.style.color = "#ffffff";
+            });
+            cloned.querySelectorAll(".menu-table .col-meal").forEach((el) => {
+              el.style.background = "#4f8b5c";
+              el.style.color = "#ffffff";
+            });
+            cloned.querySelectorAll(".menu-table tbody tr").forEach((tr, idx) => {
+              tr.querySelectorAll(".col-day").forEach((el) => {
+                el.style.background = idx % 2 === 0 ? "#f4f9f5" : "#e7f2e9";
+                el.style.color = "#1f3a28";
+              });
+            });
+            cloned.querySelectorAll(".footer-card__title").forEach((el) => {
+              el.style.background = "#2e5e3e";
+              el.style.color = "#ffffff";
+            });
+            cloned.querySelectorAll(".footer-card").forEach((el) => {
+              el.style.background = "#f4f9f5";
+              el.style.borderColor = "#4f8b5c";
+            });
+            cloned.querySelectorAll(".sheet__name, .sheet-sign__author, .sheet-sign__personal, .cell-dish").forEach((el) => {
+              el.style.color = "#2e5e3e";
+            });
+            cloned.querySelectorAll(".sheet__program").forEach((el) => {
+              el.style.color = "#4f8b5c";
+            });
+          },
+        });
+
+        const link = document.createElement("a");
+        const suffix = sheets.length > 1 ? `_стр${i + 1}` : "";
+        link.download = `${baseName}${suffix}.jpg`;
+        link.href = canvas.toDataURL("image/jpeg", 0.95);
+        link.click();
+      } finally {
+        sheet.style.border = prev.border;
+        sheet.style.overflow = prev.overflow;
+        sheet.style.maxHeight = prev.maxHeight;
+      }
+
       if (sheets.length > 1) await new Promise((r) => setTimeout(r, 300));
     }
   }
@@ -951,7 +1000,6 @@
     if (snack2) snack2.checked = usedMeals.has("snack2");
 
     // Для каждого дня гарантируем объекты всех активных приёмов
-    // (пустые → прочерк в таблице)
     const active = getActiveMeals();
     parsed.days.forEach((day) => {
       active.forEach((key) => {
@@ -972,7 +1020,7 @@
       .map((day, i) => {
         const parts = active.map((key) => {
           const n = (day.meals[key] && day.meals[key].products.length) || 0;
-          return n ? `${MEAL_LABELS[key]}(${n})` : `${MEAL_LABELS[key]}(—)`;
+          return n ? `${MEAL_LABELS[key]}(${n})` : `${MEAL_LABELS[key]}(пусто)`;
         });
         return `День ${i + 1}: ${parts.join(", ")}`;
       })
@@ -1128,7 +1176,6 @@
     const parsed = parseHealthDietTxt(sample);
     const day1 = parsed.days[0] && parsed.days[0].meals;
     const day2 = parsed.days[1] && parsed.days[1].meals;
-    const dash = renderMealCell(null);
     const ok =
       parsed.days.length === 2 &&
       day1 &&
@@ -1138,16 +1185,13 @@
       day2 &&
       day2.breakfast &&
       !day2.snack1 &&
-      day2.snack2 &&
-      dash.indexOf("\u2014") !== -1 &&
-      dash.indexOf("cell-empty") !== -1;
+      day2.snack2;
 
     console.log("[HD import self-check]", ok ? "OK" : "FAIL", {
       days: parsed.days.length,
       products: parsed.stats.products,
       day1: day1 && Object.keys(day1),
       day2: day2 && Object.keys(day2),
-      dash: dash,
     });
     return ok;
   }
