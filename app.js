@@ -353,7 +353,7 @@
   }
 
   function renderMealCell(mealData) {
-    if (!mealData) return '<div class="cell-empty"></div>';
+    if (!mealData) return '<div class="cell-empty">—</div>';
 
     const parts = [];
 
@@ -373,7 +373,7 @@
       parts.push(`<div class="cell-comment">${escapeHtml(mealData.comment)}</div>`);
     }
 
-    if (!parts.length) return '<div class="cell-empty"></div>';
+    if (!parts.length) return '<div class="cell-empty">—</div>';
     return parts.join("");
   }
 

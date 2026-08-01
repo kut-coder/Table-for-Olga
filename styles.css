@@ -538,6 +538,9 @@ textarea {
 
 .cell-empty {
   min-height: 0.6em;
+  text-align: center;
+  color: var(--green-text);
+  opacity: 0.75;
 }
 
 
