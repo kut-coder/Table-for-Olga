@@ -21,7 +21,8 @@
   --green-pale: #f4f9f5;
   --green-text: #1f3a28;
 
-  --font-sheet: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+  /* Единый шрифт печатного листа / PDF */
+  --font-sheet: Georgia, "Times New Roman", Times, serif;
 
   --a4-w: 1123px;
   --a4-h: 794px;
@@ -557,16 +558,18 @@ textarea {
   color: var(--green-dark);
 }
 
+/* Курсив подписи; шрифт наследует от .sheet */
 .sheet-sign__author,
 .sheet-sign__personal {
   margin: 0;
   font-style: italic;
-  font-weight: 600;
+  font-weight: 400;
   color: var(--green-dark);
 }
 
 .sheet-sign__author {
   margin-bottom: 4px;
+  font-size: 1em;
 }
 
 .sheet-sign__personal {
