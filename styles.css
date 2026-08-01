@@ -513,6 +513,28 @@ textarea {
   background: var(--green-soft);
 }
 
+/* Пустая ячейка: прочерк по центру по горизонтали и вертикали */
+.menu-table td.col-day--empty {
+  vertical-align: middle;
+  text-align: center;
+}
+
+.cell-empty {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  min-height: 1.2em;
+  margin: 0;
+  padding: 0;
+  text-align: center;
+  line-height: 1;
+  font-weight: 400;
+  font-style: normal;
+  color: var(--green-text);
+  opacity: 0.85;
+}
+
 /* Название блюда — жирный курсив */
 .cell-dish {
   font-weight: 700;
@@ -534,13 +556,6 @@ textarea {
   font-style: italic;
   color: var(--green-text);
   opacity: 0.9;
-}
-
-.cell-empty {
-  min-height: 0.6em;
-  text-align: center;
-  color: var(--green-text);
-  opacity: 0.75;
 }
 
 

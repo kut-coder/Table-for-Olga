@@ -352,8 +352,19 @@
     return `${w} г`;
   }
 
+  function isMealCellEmpty(mealData) {
+    if (!mealData) return true;
+    if ((mealData.dishName || "").trim()) return false;
+    if ((mealData.comment || "").trim()) return false;
+    return !(mealData.products || []).some(
+      (p) => (p.name || "").trim() || (p.weight || "").trim()
+    );
+  }
+
   function renderMealCell(mealData) {
-    if (!mealData) return '<div class="cell-empty">—</div>';
+    if (isMealCellEmpty(mealData)) {
+      return '<div class="cell-empty" aria-hidden="true">—</div>';
+    }
 
     const parts = [];
 
@@ -373,7 +384,6 @@
       parts.push(`<div class="cell-comment">${escapeHtml(mealData.comment)}</div>`);
     }
 
-    if (!parts.length) return '<div class="cell-empty">—</div>';
     return parts.join("");
   }
 
@@ -424,10 +434,11 @@
     const rows = data.activeMeals
       .map((mealKey) => {
         const cells = daySlice
-          .map(
-            (day) =>
-              `<td class="col-day">${renderMealCell(day.meals[mealKey])}</td>`
-          )
+          .map((day) => {
+            const meal = day.meals[mealKey];
+            const emptyClass = isMealCellEmpty(meal) ? " col-day--empty" : "";
+            return `<td class="col-day${emptyClass}">${renderMealCell(meal)}</td>`;
+          })
           .join("");
         return `
           <tr>
@@ -1128,7 +1139,8 @@
       day2.breakfast &&
       !day2.snack1 &&
       day2.snack2 &&
-      dash.indexOf("\u2014") !== -1;
+      dash.indexOf("\u2014") !== -1 &&
+      dash.indexOf("cell-empty") !== -1;
 
     console.log("[HD import self-check]", ok ? "OK" : "FAIL", {
       days: parsed.days.length,
