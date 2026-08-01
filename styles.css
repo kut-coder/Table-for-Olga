@@ -456,7 +456,7 @@ textarea {
 .sheet__period {
   margin: 4px 0 14px;
   font-size: 0.95em;
-  color: var(--green-text);
+  color: var(--green-mid);
   text-align: center;
 }
 
@@ -708,7 +708,7 @@ textarea {
   }
 
   .sheet__period {
-    color: #1f3a28 !important;
+    color: #4f8b5c !important;
     font-size: 0.95em !important;
     text-align: center !important;
     margin: 4px 0 14px !important;

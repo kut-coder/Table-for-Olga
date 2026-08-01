@@ -608,7 +608,7 @@
             cloned.querySelectorAll(".sheet__name, .sheet-sign__author, .sheet-sign__personal, .cell-dish").forEach((el) => {
               el.style.color = "#2e5e3e";
             });
-            cloned.querySelectorAll(".sheet__program").forEach((el) => {
+            cloned.querySelectorAll(".sheet__program, .sheet__period").forEach((el) => {
               el.style.color = "#4f8b5c";
             });
           },
