@@ -21,18 +21,17 @@
     dinner: "Ужин",
   };
 
-  /** Сопоставление заголовков Health-Diet → ключи формы */
-  const HD_MEAL_MAP = {
-    завтрак: "breakfast",
-    "утренний перекус": "snack1",
-    "перекус утром": "snack1",
-    обед: "lunch",
-    "дневной перекус": "snack2",
-    полдник: "snack2",
-    "перекус днем": "snack2",
-    "перекус днём": "snack2",
-    ужин: "dinner",
-  };
+  /** Сопоставление заголовков Health-Diet → ключи формы (unicode-escape — надёжнее кодировок) */
+  const HD_MEAL_MAP = {};
+  HD_MEAL_MAP["\u0437\u0430\u0432\u0442\u0440\u0430\u043a"] = "breakfast"; // завтрак
+  HD_MEAL_MAP["\u0443\u0442\u0440\u0435\u043d\u043d\u0438\u0439 \u043f\u0435\u0440\u0435\u043a\u0443\u0441"] =
+    "snack1"; // утренний перекус
+  HD_MEAL_MAP["\u043e\u0431\u0435\u0434"] = "lunch"; // обед
+  HD_MEAL_MAP["\u0434\u043d\u0435\u0432\u043d\u043e\u0439 \u043f\u0435\u0440\u0435\u043a\u0443\u0441"] =
+    "snack2"; // дневной перекус
+  HD_MEAL_MAP["\u043f\u043e\u043b\u0434\u043d\u0438\u043a"] = "snack2"; // полдник
+  HD_MEAL_MAP["\u0443\u0436\u0438\u043d"] = "dinner"; // ужин
+
 
   /** Порядковые для месяца (м.р.) и недели (ж.р.) */
   const MONTH_ORD = [
@@ -670,6 +669,24 @@
   /* ===========================================================
      БЛОК 9. ИМПОРТ TXT ИЗ HEALTH-DIET
      =========================================================== */
+  // Русские маркеры только через \uXXXX — не зависят от кодировки файла скрипта
+  const HD = {
+    dnevnik: "\u0414\u043d\u0435\u0432\u043d\u0438\u043a", // Дневник
+    pitaniya: "\u043f\u0438\u0442\u0430\u043d\u0438\u044f", // питания
+    za: "\u0437\u0430", // за
+    kkal: "\u043a\u043a\u0430\u043b", // ккал
+    gram: "\u0433", // г
+    nutrienty: "\u041d\u0443\u0442\u0440\u0438\u0435\u043d\u0442\u044b", // Нутриенты
+    itogo: "\u0418\u0442\u043e\u0433\u043e", // Итого
+    utrenn: "\u0443\u0442\u0440\u0435\u043d\u043d", // утренн
+    dnevn: "\u0434\u043d\u0435\u0432\u043d", // дневн
+    perekus: "\u043f\u0435\u0440\u0435\u043a\u0443\u0441", // перекус
+    zavtrak: "\u0437\u0430\u0432\u0442\u0440\u0430\u043a", // завтрак
+    obed: "\u043e\u0431\u0435\u0434", // обед
+    uzhin: "\u0443\u0436\u0438\u043d", // ужин
+    poldnik: "\u043f\u043e\u043b\u0434\u043d\u0438\u043a", // полдник
+  };
+
   function setImportStatus(message, kind) {
     if (!els.importStatus) return;
     els.importStatus.textContent = message || "";
@@ -689,37 +706,100 @@
   function mapHdMealKey(title) {
     const n = normalizeHdMealTitle(title);
     if (HD_MEAL_MAP[n]) return HD_MEAL_MAP[n];
-    // Частичные совпадения
-    if (n.includes("утренн") && n.includes("перекус")) return "snack1";
-    if (n.includes("дневн") && n.includes("перекус")) return "snack2";
-    if (n === "перекус") return "snack1";
-    if (n.includes("завтрак")) return "breakfast";
-    if (n.includes("обед")) return "lunch";
-    if (n.includes("ужин")) return "dinner";
-    if (n.includes("полдник")) return "snack2";
+    if (n.includes(HD.utrenn) && n.includes(HD.perekus)) return "snack1";
+    if (n.includes(HD.dnevn) && n.includes(HD.perekus)) return "snack2";
+    if (n === HD.perekus) return "snack1";
+    if (n.includes(HD.zavtrak)) return "breakfast";
+    if (n.includes(HD.obed)) return "lunch";
+    if (n.includes(HD.uzhin)) return "dinner";
+    if (n.includes(HD.poldnik)) return "snack2";
     return null;
+  }
+
+  function stripKkalSuffix(title) {
+    const lower = title.toLowerCase();
+    const idx = lower.indexOf(HD.kkal);
+    if (idx === -1) return title.trim();
+    return title
+      .slice(0, idx)
+      .replace(/[\s\-–—−~:]+$/g, "")
+      .trim();
+  }
+
+  /** Разбор заголовка ## ПРИЁМ ... */
+  function parseMealHeaderLine(trimmed) {
+    if (!trimmed.startsWith("##")) return null;
+    const body = trimmed.slice(2).trim();
+    if (!body) return null;
+    const metaNames = [
+      "\u0426\u0435\u043b\u044c", // Цель
+      "\u0412\u0435\u0441", // Вес
+      "\u0412\u043e\u0437\u0440\u0430\u0441\u0442", // Возраст
+      "\u0420\u043e\u0441\u0442", // Рост
+    ];
+    const bodyLower = body.toLowerCase();
+    if (metaNames.some((n) => bodyLower.indexOf(n.toLowerCase()) === 0)) {
+      return { meta: true };
+    }
+    const title = stripKkalSuffix(body);
+    if (!title) return null;
+    const hasKkal = bodyLower.indexOf(HD.kkal) !== -1;
+    const key = mapHdMealKey(title);
+    if (key) return { key, title };
+    if (hasKkal) return { key: null, title, unknown: true };
+    return null;
+  }
+
+  /** Разбор строки продукта: «1. Название: 50 г, ...» */
+  function parseProductLine(trimmed) {
+    const numMatch = trimmed.match(/^(\d+)[.)]\s*(.+)$/);
+    if (!numMatch) return null;
+    const rest = numMatch[2].trim();
+    const unitRe = new RegExp(
+      "^(.+):\\s*([\\d.,]+)\\s*(?:" +
+        HD.gram +
+        "\u0440|" +
+        HD.gram +
+        "|g|gr)(?=\\s|,|$)",
+      "i"
+    );
+    const m = rest.match(unitRe);
+    if (!m) return null;
+    return {
+      name: m[1].trim(),
+      weight: `${m[2].replace(",", ".")} ${HD.gram}`,
+    };
   }
 
   /**
    * Парсит экспорт Health-Diet (.txt).
-   * Важно: в JS \b не работает с кириллицей — не используем его после русских букв.
-   * Возвращает { days: [{ date, meals }], skippedMeals: string[] }
+   * Возвращает { days, skippedMeals, stats }
    */
   function parseHealthDietTxt(text) {
     const lines = String(text || "").replace(/^\uFEFF/, "").split(/\r?\n/);
     const days = [];
     const skippedMeals = new Set();
+    const stats = {
+      lines: lines.length,
+      dayHeaders: 0,
+      mealHeaders: 0,
+      products: 0,
+    };
 
     let currentDay = null;
     let currentMealKey = null;
     let inNutrients = false;
 
-    const dayRe = /^#\s*Дневник\s+питания\s+за\s+(.+)$/i;
-    // Тире может быть -, – или —; после «ккал» пробел/запятая/конец (не \b)
-    const mealRe = /^##\s+(.+?)\s*[-–—]\s*ккал(?:\s|,|$)/i;
-    const mealOnlyRe = /^##\s+(.+)$/i;
-    const productRe = /^\s*\d+[.)]\s*(.+?):\s*([\d.,]+)\s*г(?:\s|,|$)/i;
-    const metaRe = /^##\s*(Цель|Вес|Возраст|Рост)\b/i;
+    const dayRe = new RegExp(
+      "^#\\s*" +
+        HD.dnevnik +
+        "\\s+" +
+        HD.pitaniya +
+        "\\s+" +
+        HD.za +
+        "\\s+(.+)$",
+      "i"
+    );
 
     function ensureDay() {
       if (!currentDay) {
@@ -737,30 +817,7 @@
       return day.meals[key];
     }
 
-    function startMealFromTitle(titleRaw) {
-      const title = String(titleRaw || "")
-        .replace(/\s*[-–—]\s*ккал.*$/i, "")
-        .trim();
-      if (!title) return false;
-      if (/^(Цель|Вес|Возраст|Рост)\b/i.test(title)) {
-        currentMealKey = null;
-        inNutrients = true;
-        return true;
-      }
-      const key = mapHdMealKey(title);
-      if (!key) {
-        skippedMeals.add(title);
-        currentMealKey = null;
-        return true;
-      }
-      inNutrients = false;
-      currentMealKey = key;
-      ensureMeal(key);
-      return true;
-    }
-
     lines.forEach((line) => {
-      // Убираем неразрывные пробелы
       const trimmed = line.replace(/\u00A0/g, " ").trim();
       if (!trimmed) return;
 
@@ -770,16 +827,15 @@
         days.push(currentDay);
         currentMealKey = null;
         inNutrients = false;
+        stats.dayHeaders += 1;
         return;
       }
 
-      if (/^Нутриенты\s*:/i.test(trimmed) || /^Итого\s+за\s+день/i.test(trimmed)) {
-        currentMealKey = null;
-        inNutrients = true;
-        return;
-      }
-
-      if (metaRe.test(trimmed)) {
+      const low = trimmed.toLowerCase();
+      if (
+        low.indexOf(HD.nutrienty.toLowerCase()) === 0 ||
+        low.indexOf(HD.itogo.toLowerCase()) === 0
+      ) {
         currentMealKey = null;
         inNutrients = true;
         return;
@@ -789,31 +845,31 @@
         return;
       }
 
-      const mealMatch = trimmed.match(mealRe);
-      if (mealMatch) {
-        startMealFromTitle(mealMatch[1]);
-        return;
-      }
-
-      // Запасной вариант: ## ЗАВТРАК без «- ккал»
-      const mealOnlyMatch = trimmed.match(mealOnlyRe);
-      if (mealOnlyMatch) {
-        const maybeTitle = mealOnlyMatch[1].trim();
-        if (mapHdMealKey(maybeTitle.replace(/\s*[-–—]\s*ккал.*$/i, "").trim()) ||
-            /^(Цель|Вес|Возраст|Рост)\b/i.test(maybeTitle)) {
-          startMealFromTitle(maybeTitle);
+      const mealInfo = parseMealHeaderLine(trimmed);
+      if (mealInfo) {
+        if (mealInfo.meta) {
+          currentMealKey = null;
+          inNutrients = true;
           return;
         }
+        stats.mealHeaders += 1;
+        if (mealInfo.unknown || !mealInfo.key) {
+          skippedMeals.add(mealInfo.title);
+          currentMealKey = null;
+          return;
+        }
+        inNutrients = false;
+        currentMealKey = mealInfo.key;
+        ensureMeal(mealInfo.key);
+        return;
       }
 
       if (!currentMealKey) return;
 
-      const productMatch = trimmed.match(productRe);
-      if (productMatch) {
-        const name = productMatch[1].trim();
-        const amount = productMatch[2].replace(",", ".").trim();
-        const weight = `${amount} г`;
-        ensureMeal(currentMealKey).products.push({ name, weight });
+      const product = parseProductLine(trimmed);
+      if (product) {
+        ensureMeal(currentMealKey).products.push(product);
+        stats.products += 1;
       }
     });
 
@@ -824,43 +880,51 @@
     return {
       days: nonEmptyDays,
       skippedMeals: Array.from(skippedMeals),
+      stats,
     };
   }
 
   function looksLikeHealthDietTxt(text) {
-    const t = String(text || "");
+    const t = String(text || "").toLowerCase();
     return (
-      /Дневник\s+питания/i.test(t) ||
-      /##\s*.+ккал/i.test(t) ||
-      /^\s*\d+[.)]\s*.+:\s*[\d.,]+\s*г/m.test(t)
+      t.indexOf(HD.dnevnik.toLowerCase()) !== -1 ||
+      t.indexOf(HD.kkal) !== -1 ||
+      /^\s*\d+[.)]\s*.+:\s*[\d.,]+/m.test(t)
     );
   }
 
   async function readImportFileText(file) {
     const buf = await file.arrayBuffer();
-    const utf8 = new TextDecoder("utf-8").decode(buf);
-    if (looksLikeHealthDietTxt(utf8) && parseHealthDietTxt(utf8).days.length) {
-      return utf8;
-    }
-    // Частый случай экспорта Windows: CP1251
-    let cp1251 = "";
+    const variants = [];
+    variants.push(new TextDecoder("utf-8").decode(buf));
     try {
-      cp1251 = new TextDecoder("windows-1251").decode(buf);
-      if (looksLikeHealthDietTxt(cp1251) && parseHealthDietTxt(cp1251).days.length) {
-        return cp1251;
-      }
+      variants.push(new TextDecoder("windows-1251").decode(buf));
     } catch (err) {
-      /* ignore */
+      /* Samsung и др. могут не знать cp1251 */
     }
-    // Если UTF-8 хоть как-то похож — вернём его для понятной ошибки парсера
-    if (looksLikeHealthDietTxt(utf8)) return utf8;
-    if (cp1251 && looksLikeHealthDietTxt(cp1251)) return cp1251;
-    return utf8;
+
+    let best = variants[0];
+    let bestScore = -1;
+    variants.forEach((text) => {
+      const parsed = parseHealthDietTxt(text);
+      const score = parsed.stats.products + parsed.days.length * 10;
+      if (score > bestScore) {
+        bestScore = score;
+        best = text;
+      }
+    });
+    return best;
   }
 
   function applyHealthDietImport(parsed) {
     if (!parsed.days.length) {
-      throw new Error("В файле не найдено ни одного дня с продуктами.");
+      const s = parsed.stats || {};
+      throw new Error(
+        "В файле не найдено ни одного дня с продуктами. " +
+          `Строк: ${s.lines || 0}, дней: ${s.dayHeaders || 0}, ` +
+          `приёмов: ${s.mealHeaders || 0}, продуктов: ${s.products || 0}. ` +
+          "Нужен именно txt-экспорт Health-Diet."
+      );
     }
 
     const usedMeals = new Set();
@@ -870,7 +934,6 @@
       });
     });
 
-    // Перекусы включаем только если они есть в импорте
     const snack1 = els.mealToggles.querySelector('input[data-meal="snack1"]');
     const snack2 = els.mealToggles.querySelector('input[data-meal="snack2"]');
     if (snack1) snack1.checked = usedMeals.has("snack1");
@@ -897,12 +960,9 @@
 
   async function importFromText(text, sourceLabel) {
     try {
-      const hasContent = els.daysContainer.querySelector(".item-name, .meal-dish-name");
-      const filled =
-        hasContent &&
-        Array.from(els.daysContainer.querySelectorAll(".item-name, .meal-dish-name")).some(
-          (el) => el.value.trim()
-        );
+      const filled = Array.from(
+        els.daysContainer.querySelectorAll(".item-name, .meal-dish-name")
+      ).some((el) => el.value.trim());
 
       if (filled) {
         const ok = confirm(
@@ -954,6 +1014,33 @@
     }
   }
 
+  /** Самопроверка парсера при загрузке страницы */
+  function runImportSelfCheck() {
+    const sample =
+      "# " +
+      HD.dnevnik +
+      " " +
+      HD.pitaniya +
+      " " +
+      HD.za +
+      " 01.01.2026\n\n## " +
+      HD.zavtrak.toUpperCase() +
+      " - " +
+      HD.kkal +
+      " 100\n   1. TestProduct: 50 " +
+      HD.gram +
+      ", " +
+      HD.kkal +
+      " 1\n";
+    const parsed = parseHealthDietTxt(sample);
+    const ok =
+      parsed.days.length === 1 &&
+      parsed.days[0].meals.breakfast &&
+      parsed.days[0].meals.breakfast.products.length === 1;
+    console.log("[HD import self-check]", ok ? "OK" : "FAIL", parsed);
+    return ok;
+  }
+
   /* ===========================================================
      БЛОК 10. СБРОС И ИНИЦИАЛИЗАЦИЯ
      =========================================================== */
@@ -1002,6 +1089,13 @@
     }
     if (els.btnImportPaste) {
       els.btnImportPaste.addEventListener("click", () => handleImportPaste());
+    }
+
+    if (!runImportSelfCheck()) {
+      setImportStatus(
+        "Внимание: самопроверка импорта не прошла. Обновите страницу с очисткой кэша.",
+        "err"
+      );
     }
 
     els.mealToggles.addEventListener("change", () => {
