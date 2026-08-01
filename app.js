@@ -299,7 +299,9 @@
   function collectFormData() {
     const lastname = els.lastname.value.trim();
     const firstname = els.firstname.value.trim();
-    const genitive = els.genitive.value.trim();
+    // Читаем поле заново из DOM — надёжнее при кэше/перезагрузке
+    const genitiveEl = document.getElementById("client-genitive");
+    const genitive = (genitiveEl ? genitiveEl.value : "").trim();
     const month = els.month.value.trim();
     const week = els.week.value.trim();
     const activeMeals = getActiveMeals();
@@ -381,16 +383,17 @@
       </div>`
     ).join("");
 
+    // Только из поля «родительный падеж»; имя/фамилию сюда НЕ подставляем
     const personal = (data.genitive || "").trim();
-    const personalLine = personal
-      ? `Программа составлена индивидуально для ${escapeHtml(personal)}.`
+    const personalHtml = personal
+      ? `<p class="sheet-sign__personal">Программа составлена индивидуально для ${escapeHtml(personal)}.</p>`
       : "";
 
     return `
       <div class="sheet-footer">${cards}</div>
       <div class="sheet-sign">
         <p class="sheet-sign__author">${escapeHtml(AUTHOR_LINE)}</p>
-        <p class="sheet-sign__personal">${personalLine}</p>
+        ${personalHtml}
       </div>
     `;
   }
@@ -574,7 +577,7 @@
       version: 2,
       lastname: els.lastname.value,
       firstname: els.firstname.value,
-      genitive: els.genitive.value,
+      genitive: (document.getElementById("client-genitive") || {}).value || "",
       month: els.month.value,
       week: els.week.value,
       mealsEnabled,
@@ -618,7 +621,8 @@
 
     els.lastname.value = draft.lastname || "";
     els.firstname.value = draft.firstname || "";
-    els.genitive.value = draft.genitive || "";
+    const genitiveEl = document.getElementById("client-genitive");
+    if (genitiveEl) genitiveEl.value = draft.genitive || "";
     els.month.value = draft.month || "";
     els.week.value = draft.week || "";
 
@@ -653,7 +657,8 @@
   function resetAll() {
     els.lastname.value = "";
     els.firstname.value = "";
-    els.genitive.value = "";
+    const genitiveEl = document.getElementById("client-genitive");
+    if (genitiveEl) genitiveEl.value = "";
     els.month.value = "";
     els.week.value = "";
 
@@ -672,6 +677,9 @@
   }
 
   function init() {
+    // На случай, если DOM ещё не был готов при объявлении els
+    els.genitive = document.getElementById("client-genitive");
+
     els.btnAddDay.addEventListener("click", () => {
       addDay();
       notifyFormChange();

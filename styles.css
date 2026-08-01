@@ -554,17 +554,22 @@ textarea {
 .sheet-sign {
   margin-top: 12px;
   text-align: center;
-  color: var(--green-text);
+  color: var(--green-dark);
 }
 
-.sheet-sign__author {
-  margin: 0 0 4px;
+.sheet-sign__author,
+.sheet-sign__personal {
+  margin: 0;
+  font-style: italic;
   font-weight: 600;
   color: var(--green-dark);
 }
 
+.sheet-sign__author {
+  margin-bottom: 4px;
+}
+
 .sheet-sign__personal {
-  margin: 0;
   font-size: 0.95em;
 }
 
