@@ -118,6 +118,7 @@
   const els = {
     lastname: document.getElementById("client-lastname"),
     firstname: document.getElementById("client-firstname"),
+    genitive: document.getElementById("client-genitive"),
     month: document.getElementById("month-number"),
     week: document.getElementById("week-number"),
     mealToggles: document.getElementById("meal-toggles"),
@@ -170,12 +171,6 @@
       .join(" ")
       .trim()
       .toUpperCase();
-  }
-
-  /** «для Галины Поташевой» — имя + фамилия в род. падеже упрощённо */
-  function clientDativePhrase(lastname, firstname) {
-    const name = [firstname, lastname].filter(Boolean).join(" ").trim();
-    return name;
   }
 
   /* ===========================================================
@@ -304,6 +299,7 @@
   function collectFormData() {
     const lastname = els.lastname.value.trim();
     const firstname = els.firstname.value.trim();
+    const genitive = els.genitive.value.trim();
     const month = els.month.value.trim();
     const week = els.week.value.trim();
     const activeMeals = getActiveMeals();
@@ -317,7 +313,7 @@
       days.push({ dayIndex: i + 1, meals });
     });
 
-    return { lastname, firstname, month, week, activeMeals, days };
+    return { lastname, firstname, genitive, month, week, activeMeals, days };
   }
 
   /* ===========================================================
@@ -385,7 +381,7 @@
       </div>`
     ).join("");
 
-    const personal = clientDativePhrase(data.lastname, data.firstname);
+    const personal = (data.genitive || "").trim();
     const personalLine = personal
       ? `Программа составлена индивидуально для ${escapeHtml(personal)}.`
       : "";
@@ -578,6 +574,7 @@
       version: 2,
       lastname: els.lastname.value,
       firstname: els.firstname.value,
+      genitive: els.genitive.value,
       month: els.month.value,
       week: els.week.value,
       mealsEnabled,
@@ -621,6 +618,7 @@
 
     els.lastname.value = draft.lastname || "";
     els.firstname.value = draft.firstname || "";
+    els.genitive.value = draft.genitive || "";
     els.month.value = draft.month || "";
     els.week.value = draft.week || "";
 
@@ -655,6 +653,7 @@
   function resetAll() {
     els.lastname.value = "";
     els.firstname.value = "";
+    els.genitive.value = "";
     els.month.value = "";
     els.week.value = "";
 
