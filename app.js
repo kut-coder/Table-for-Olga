@@ -939,6 +939,17 @@
     if (snack1) snack1.checked = usedMeals.has("snack1");
     if (snack2) snack2.checked = usedMeals.has("snack2");
 
+    // Для каждого дня гарантируем объекты всех активных приёмов
+    // (пустые → прочерк в таблице)
+    const active = getActiveMeals();
+    parsed.days.forEach((day) => {
+      active.forEach((key) => {
+        if (!day.meals[key]) {
+          day.meals[key] = { dishName: "", products: [], comment: "" };
+        }
+      });
+    });
+
     els.daysContainer.innerHTML = "";
     parsed.days.forEach((day) => {
       addDay(day.meals);
@@ -946,12 +957,17 @@
 
     notifyFormChange();
 
-    const snackNote = [];
-    if (!usedMeals.has("snack1")) snackNote.push("утренний перекус выключен");
-    if (!usedMeals.has("snack2")) snackNote.push("дневной перекус выключен");
+    const perDay = parsed.days
+      .map((day, i) => {
+        const parts = active.map((key) => {
+          const n = (day.meals[key] && day.meals[key].products.length) || 0;
+          return n ? `${MEAL_LABELS[key]}(${n})` : `${MEAL_LABELS[key]}(—)`;
+        });
+        return `День ${i + 1}: ${parts.join(", ")}`;
+      })
+      .join("; ");
 
-    let msg = `Импортировано дней: ${parsed.days.length}`;
-    if (snackNote.length) msg += ` (${snackNote.join(", ")})`;
+    let msg = `Импортировано дней: ${parsed.days.length}. ${perDay}`;
     if (parsed.skippedMeals.length) {
       msg += `. Пропущены приёмы: ${parsed.skippedMeals.join(", ")}`;
     }
@@ -1016,6 +1032,7 @@
 
   /** Самопроверка парсера при загрузке страницы */
   function runImportSelfCheck() {
+    const nl = "\n";
     const sample =
       "# " +
       HD.dnevnik +
@@ -1023,21 +1040,103 @@
       HD.pitaniya +
       " " +
       HD.za +
-      " 01.01.2026\n\n## " +
+      " 01.01.2026" +
+      nl +
+      nl +
+      "## " +
       HD.zavtrak.toUpperCase() +
       " - " +
       HD.kkal +
-      " 100\n   1. TestProduct: 50 " +
+      " 100" +
+      nl +
+      "   1. TestA: 50 " +
       HD.gram +
       ", " +
       HD.kkal +
-      " 1\n";
+      " 1" +
+      nl +
+      "## " +
+      HD.utrenn +
+      "\u0438\u0439 " +
+      HD.perekus.toUpperCase() +
+      " - " +
+      HD.kkal +
+      " 10" +
+      nl +
+      "   1. SnackA: 20 " +
+      HD.gram +
+      ", " +
+      HD.kkal +
+      " 1" +
+      nl +
+      HD.itogo +
+      " " +
+      HD.za +
+      " " +
+      "\u0434\u0435\u043d\u044c." +
+      nl +
+      HD.nutrienty +
+      ":" +
+      nl +
+      "---------" +
+      nl +
+      "# " +
+      HD.dnevnik +
+      " " +
+      HD.pitaniya +
+      " " +
+      HD.za +
+      " 02.01.2026" +
+      nl +
+      nl +
+      "## " +
+      HD.zavtrak.toUpperCase() +
+      " - " +
+      HD.kkal +
+      " 50" +
+      nl +
+      "   1. TestB: 30 " +
+      HD.gram +
+      ", " +
+      HD.kkal +
+      " 1" +
+      nl +
+      "## " +
+      "\u0414\u041d\u0415\u0412\u041d\u041e\u0419 \u041f\u0415\u0420\u0415\u041a\u0423\u0421" +
+      " - " +
+      HD.kkal +
+      " 10" +
+      nl +
+      "   1. SnackB: 15 " +
+      HD.gram +
+      ", " +
+      HD.kkal +
+      " 1" +
+      nl;
+
     const parsed = parseHealthDietTxt(sample);
+    const day1 = parsed.days[0] && parsed.days[0].meals;
+    const day2 = parsed.days[1] && parsed.days[1].meals;
+    const dash = renderMealCell(null);
     const ok =
-      parsed.days.length === 1 &&
-      parsed.days[0].meals.breakfast &&
-      parsed.days[0].meals.breakfast.products.length === 1;
-    console.log("[HD import self-check]", ok ? "OK" : "FAIL", parsed);
+      parsed.days.length === 2 &&
+      day1 &&
+      day1.breakfast &&
+      day1.snack1 &&
+      !day1.snack2 &&
+      day2 &&
+      day2.breakfast &&
+      !day2.snack1 &&
+      day2.snack2 &&
+      dash.indexOf("\u2014") !== -1;
+
+    console.log("[HD import self-check]", ok ? "OK" : "FAIL", {
+      days: parsed.days.length,
+      products: parsed.stats.products,
+      day1: day1 && Object.keys(day1),
+      day2: day2 && Object.keys(day2),
+      dash: dash,
+    });
     return ok;
   }
 
@@ -1067,6 +1166,9 @@
   }
 
   function init() {
+    // Страница без формы (тестовая) — только парсер
+    if (!els.daysContainer || !els.printRoot) return;
+
     // На случай, если DOM ещё не был готов при объявлении els
     els.genitive = document.getElementById("client-genitive");
 
@@ -1116,6 +1218,10 @@
     }
     renderPreview();
   }
+
+  // Всегда доступно для тестов / консоли
+  window.__HD_PARSE = parseHealthDietTxt;
+  window.__HD_RENDER_CELL = renderMealCell;
 
   if (document.readyState === "loading") {
     document.addEventListener("DOMContentLoaded", init);
