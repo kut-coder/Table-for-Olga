@@ -119,8 +119,9 @@
 
   const AUTHOR_LINE = "Авторская программа питания Ольги Башаран";
 
-  /** Сколько дней-колонок комфортно на одном листе */
-  const DAYS_PER_PAGE = 7;
+  /** Размер листа A4 landscape в px (как в CSS --a4-w / --a4-h) */
+  const SHEET_W = 1123;
+  const SHEET_H = 794;
 
   const DRAFT_STORAGE_KEY = "nutrition-menu-draft-v2";
 
@@ -459,34 +460,66 @@
     return sheet;
   }
 
-  function fitFontSize(sheet) {
-    const min = 7.5;
-    const max = 12;
-    let size = max;
+  function sheetFits(sheet) {
+    const table = sheet.querySelector(".menu-table");
+    const widthOk = !table || table.scrollWidth <= sheet.clientWidth + 2;
+    const heightOk = sheet.scrollHeight <= sheet.clientHeight + 2;
+    return widthOk && heightOk;
+  }
+
+  /**
+   * Подгоняет весь документ в один лист A4 landscape:
+   * шрифт → компактный режим → zoom (Chrome/Edge).
+   */
+  function fitSheetToOnePage(sheet) {
+    sheet.classList.remove("sheet--compact");
+    sheet.style.zoom = "";
+    sheet.style.width = SHEET_W + "px";
+    sheet.style.height = SHEET_H + "px";
+    sheet.style.minHeight = SHEET_H + "px";
+    sheet.style.maxHeight = SHEET_H + "px";
+    sheet.style.overflow = "hidden";
+
+    let size = 12;
+    const min = 6;
     sheet.style.fontSize = size + "px";
 
-    while (size > min) {
-      const table = sheet.querySelector(".menu-table");
-      if (!table) break;
-      if (table.scrollWidth <= sheet.clientWidth + 1) break;
+    while (size > min && !sheetFits(sheet)) {
       size -= 0.5;
       sheet.style.fontSize = size + "px";
     }
-  }
 
-  function paginate(data) {
-    const pages = [];
-    const days = data.days.length ? data.days : [];
-    if (!days.length) return pages;
-
-    for (let i = 0; i < days.length; i += DAYS_PER_PAGE) {
-      const slice = days.slice(i, i + DAYS_PER_PAGE);
-      const isLast = i + DAYS_PER_PAGE >= days.length;
-      const sheet = createSheet(data, slice, { withFooter: isLast });
-      pages.push(sheet);
+    if (!sheetFits(sheet)) {
+      sheet.classList.add("sheet--compact");
+      size = Math.min(size, 9);
+      sheet.style.fontSize = size + "px";
+      while (size > min && !sheetFits(sheet)) {
+        size -= 0.5;
+        sheet.style.fontSize = size + "px";
+      }
     }
 
-    return pages;
+    if (!sheetFits(sheet)) {
+      const scaleW = sheet.clientWidth / Math.max(sheet.scrollWidth, 1);
+      const scaleH = sheet.clientHeight / Math.max(sheet.scrollHeight, 1);
+      const zoom = Math.max(0.55, Math.min(1, scaleW, scaleH) * 0.98);
+      sheet.style.zoom = String(zoom);
+    }
+
+    return {
+      fontSize: sheet.style.fontSize,
+      zoom: sheet.style.zoom || "1",
+      compact: sheet.classList.contains("sheet--compact"),
+      fits: sheetFits(sheet),
+      sheets: 1,
+    };
+  }
+
+  /** Всегда один лист: все дни + нижние блоки */
+  function buildPages(data) {
+    const days = data.days.length ? data.days : [];
+    if (!days.length) return [];
+    return [createSheet(data, days, { withFooter: true })];
   }
 
   function renderPreview() {
@@ -510,12 +543,19 @@
       "position:absolute;left:-9999px;top:0;visibility:hidden;";
     document.body.appendChild(measureHost);
 
-    const pages = paginate(data);
+    const pages = buildPages(data);
     pages.forEach((sheet) => {
       measureHost.appendChild(sheet);
-      fitFontSize(sheet);
+      const fit = fitSheetToOnePage(sheet);
       const clone = sheet.cloneNode(true);
-      clone.style.fontSize = sheet.style.fontSize;
+      clone.style.fontSize = fit.fontSize;
+      clone.style.zoom = fit.zoom === "1" ? "" : fit.zoom;
+      clone.style.width = SHEET_W + "px";
+      clone.style.height = SHEET_H + "px";
+      clone.style.minHeight = SHEET_H + "px";
+      clone.style.maxHeight = SHEET_H + "px";
+      clone.style.overflow = "hidden";
+      if (fit.compact) clone.classList.add("sheet--compact");
       els.printRoot.appendChild(clone);
     });
 
@@ -523,11 +563,38 @@
     return data;
   }
 
+  /** Проверка: в превью ровно один лист, контент внутри A4 */
+  function verifySinglePrintPage() {
+    const sheets = els.printRoot.querySelectorAll(".sheet");
+    if (sheets.length !== 1) {
+      return { ok: false, reason: `листов: ${sheets.length}, ожидался 1` };
+    }
+    const sheet = sheets[0];
+    const overflowH = sheet.scrollHeight - sheet.clientHeight;
+    const table = sheet.querySelector(".menu-table");
+    const overflowW = table ? table.scrollWidth - sheet.clientWidth : 0;
+    const ok = overflowH <= 2 && overflowW <= 2;
+    return {
+      ok,
+      sheets: sheets.length,
+      overflowH,
+      overflowW,
+      fontSize: sheet.style.fontSize,
+      zoom: sheet.style.zoom || "1",
+      compact: sheet.classList.contains("sheet--compact"),
+      reason: ok ? "OK" : `переполнение H=${overflowH}px W=${overflowW}px`,
+    };
+  }
+
   /* ===========================================================
      БЛОК 7. PDF / JPG
      =========================================================== */
   function downloadPdf() {
     renderPreview();
+    const check = verifySinglePrintPage();
+    if (!check.ok) {
+      console.warn("[PDF] лист не уместился идеально:", check);
+    }
     requestAnimationFrame(() => {
       setTimeout(() => window.print(), 150);
     });
@@ -541,10 +608,15 @@
       return;
     }
 
-    const sheets = els.printRoot.querySelectorAll(".sheet");
-    if (!sheets.length) {
+    const sheet = els.printRoot.querySelector(".sheet");
+    if (!sheet) {
       alert("Нет данных для сохранения.");
       return;
+    }
+
+    const check = verifySinglePrintPage();
+    if (!check.ok) {
+      console.warn("[JPG] лист не уместился идеально:", check);
     }
 
     const data = collectFormData();
@@ -558,74 +630,72 @@
         .filter(Boolean)
         .join("_") || "programma-pitaniya";
 
-    for (let i = 0; i < sheets.length; i++) {
-      const sheet = sheets[i];
-      const prev = {
-        border: sheet.style.border,
-        overflow: sheet.style.overflow,
-        maxHeight: sheet.style.maxHeight,
-      };
-      // Как на печати: без рамки превью, без обрезки
-      sheet.style.border = "none";
-      sheet.style.overflow = "visible";
-      sheet.style.maxHeight = "none";
+    const prevBorder = sheet.style.border;
+    sheet.style.border = "none";
 
-      try {
-        const canvas = await html2canvas(sheet, {
-          backgroundColor: "#ffffff",
-          scale: 2,
-          useCORS: true,
-          logging: false,
-          onclone: (_doc, cloned) => {
-            cloned.style.border = "none";
-            cloned.style.overflow = "visible";
-            cloned.style.maxHeight = "none";
-            cloned.style.background = "#ffffff";
-            cloned.style.fontFamily = 'Georgia, "Times New Roman", Times, serif';
-            // Жёстко фиксируем цвета как в превью (на случай var())
-            cloned.querySelectorAll(".menu-table thead th").forEach((el) => {
-              el.style.background = "#2e5e3e";
-              el.style.color = "#ffffff";
+    try {
+      const canvas = await html2canvas(sheet, {
+        backgroundColor: "#ffffff",
+        scale: 2,
+        useCORS: true,
+        logging: false,
+        width: SHEET_W,
+        height: SHEET_H,
+        windowWidth: SHEET_W,
+        windowHeight: SHEET_H,
+        onclone: (_doc, cloned) => {
+          cloned.style.border = "none";
+          cloned.style.width = SHEET_W + "px";
+          cloned.style.height = SHEET_H + "px";
+          cloned.style.maxHeight = SHEET_H + "px";
+          cloned.style.overflow = "hidden";
+          cloned.style.background = "#ffffff";
+          cloned.style.fontFamily = 'Georgia, "Times New Roman", Times, serif';
+          if (sheet.style.zoom) cloned.style.zoom = sheet.style.zoom;
+          if (sheet.classList.contains("sheet--compact")) {
+            cloned.classList.add("sheet--compact");
+          }
+          cloned.querySelectorAll(".menu-table thead th").forEach((el) => {
+            el.style.background = "#2e5e3e";
+            el.style.color = "#ffffff";
+          });
+          cloned.querySelectorAll(".menu-table .col-meal").forEach((el) => {
+            el.style.background = "#4f8b5c";
+            el.style.color = "#ffffff";
+          });
+          cloned.querySelectorAll(".menu-table tbody tr").forEach((tr, idx) => {
+            tr.querySelectorAll(".col-day").forEach((el) => {
+              el.style.background = idx % 2 === 0 ? "#f4f9f5" : "#e7f2e9";
+              el.style.color = "#1f3a28";
             });
-            cloned.querySelectorAll(".menu-table .col-meal").forEach((el) => {
-              el.style.background = "#4f8b5c";
-              el.style.color = "#ffffff";
-            });
-            cloned.querySelectorAll(".menu-table tbody tr").forEach((tr, idx) => {
-              tr.querySelectorAll(".col-day").forEach((el) => {
-                el.style.background = idx % 2 === 0 ? "#f4f9f5" : "#e7f2e9";
-                el.style.color = "#1f3a28";
-              });
-            });
-            cloned.querySelectorAll(".footer-card__title").forEach((el) => {
-              el.style.background = "#2e5e3e";
-              el.style.color = "#ffffff";
-            });
-            cloned.querySelectorAll(".footer-card").forEach((el) => {
-              el.style.background = "#f4f9f5";
-              el.style.borderColor = "#4f8b5c";
-            });
-            cloned.querySelectorAll(".sheet__name, .sheet-sign__author, .sheet-sign__personal, .cell-dish").forEach((el) => {
+          });
+          cloned.querySelectorAll(".footer-card__title").forEach((el) => {
+            el.style.background = "#2e5e3e";
+            el.style.color = "#ffffff";
+          });
+          cloned.querySelectorAll(".footer-card").forEach((el) => {
+            el.style.background = "#f4f9f5";
+            el.style.borderColor = "#4f8b5c";
+          });
+          cloned
+            .querySelectorAll(
+              ".sheet__name, .sheet-sign__author, .sheet-sign__personal, .cell-dish"
+            )
+            .forEach((el) => {
               el.style.color = "#2e5e3e";
             });
-            cloned.querySelectorAll(".sheet__program, .sheet__period").forEach((el) => {
-              el.style.color = "#4f8b5c";
-            });
-          },
-        });
+          cloned.querySelectorAll(".sheet__program, .sheet__period").forEach((el) => {
+            el.style.color = "#4f8b5c";
+          });
+        },
+      });
 
-        const link = document.createElement("a");
-        const suffix = sheets.length > 1 ? `_стр${i + 1}` : "";
-        link.download = `${baseName}${suffix}.jpg`;
-        link.href = canvas.toDataURL("image/jpeg", 0.95);
-        link.click();
-      } finally {
-        sheet.style.border = prev.border;
-        sheet.style.overflow = prev.overflow;
-        sheet.style.maxHeight = prev.maxHeight;
-      }
-
-      if (sheets.length > 1) await new Promise((r) => setTimeout(r, 300));
+      const link = document.createElement("a");
+      link.download = `${baseName}.jpg`;
+      link.href = canvas.toDataURL("image/jpeg", 0.95);
+      link.click();
+    } finally {
+      sheet.style.border = prevBorder;
     }
   }
 
@@ -1278,6 +1348,8 @@
   // Всегда доступно для тестов / консоли
   window.__HD_PARSE = parseHealthDietTxt;
   window.__HD_RENDER_CELL = renderMealCell;
+  window.__VERIFY_SINGLE_PAGE = verifySinglePrintPage;
+  window.__RENDER_PREVIEW = renderPreview;
 
   if (document.readyState === "loading") {
     document.addEventListener("DOMContentLoaded", init);
