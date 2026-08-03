@@ -1096,7 +1096,7 @@
     return `Импортировано дней: ${parsed.days.length}.`;
   }
 
-  async function importFromText(text, sourceLabel) {
+  async function importFromText(text) {
     try {
       const filled = Array.from(
         els.daysContainer.querySelectorAll(".item-name, .meal-dish-name")
@@ -1124,7 +1124,7 @@
   function handleImportFile(file) {
     if (!file) return;
     readImportFileText(file)
-      .then((text) => importFromText(text, file.name))
+      .then((text) => importFromText(text))
       .catch((err) => {
         console.error(err);
         setImportStatus("Не удалось прочитать файл.", "err");
@@ -1136,7 +1136,7 @@
       if (!navigator.clipboard || !navigator.clipboard.readText) {
         const manual = prompt("Вставьте сюда текст экспорта Health-Diet (txt):");
         if (manual == null) return;
-        await importFromText(manual, "буфер");
+        await importFromText(manual);
         return;
       }
       const text = await navigator.clipboard.readText();
@@ -1144,11 +1144,11 @@
         setImportStatus("Буфер обмена пуст.", "err");
         return;
       }
-      await importFromText(text, "буфер");
+      await importFromText(text);
     } catch (err) {
       const manual = prompt("Не удалось прочитать буфер. Вставьте текст экспорта вручную:");
       if (manual == null) return;
-      await importFromText(manual, "вставка");
+      await importFromText(manual);
     }
   }
 
