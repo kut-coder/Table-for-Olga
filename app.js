@@ -663,6 +663,13 @@
             el.style.background = "#4f8b5c";
             el.style.color = "#ffffff";
           });
+          cloned.querySelectorAll(".menu-table thead th.col-meal").forEach((el) => {
+            el.style.borderBottomColor = "#ffffff";
+          });
+          cloned.querySelectorAll(".menu-table tbody td.col-meal").forEach((el) => {
+            el.style.borderTopColor = "#ffffff";
+            el.style.borderBottomColor = "#ffffff";
+          });
           cloned.querySelectorAll(".menu-table tbody tr").forEach((tr, idx) => {
             tr.querySelectorAll(".col-day").forEach((el) => {
               el.style.background = idx % 2 === 0 ? "#f4f9f5" : "#e7f2e9";
@@ -1086,21 +1093,7 @@
 
     notifyFormChange();
 
-    const perDay = parsed.days
-      .map((day, i) => {
-        const parts = active.map((key) => {
-          const n = (day.meals[key] && day.meals[key].products.length) || 0;
-          return n ? `${MEAL_LABELS[key]}(${n})` : `${MEAL_LABELS[key]}(пусто)`;
-        });
-        return `День ${i + 1}: ${parts.join(", ")}`;
-      })
-      .join("; ");
-
-    let msg = `Импортировано дней: ${parsed.days.length}. ${perDay}`;
-    if (parsed.skippedMeals.length) {
-      msg += `. Пропущены приёмы: ${parsed.skippedMeals.join(", ")}`;
-    }
-    return msg;
+    return `Импортировано дней: ${parsed.days.length}.`;
   }
 
   async function importFromText(text, sourceLabel) {
@@ -1121,7 +1114,7 @@
 
       const parsed = parseHealthDietTxt(text);
       const msg = applyHealthDietImport(parsed);
-      setImportStatus(msg + (sourceLabel ? ` ← ${sourceLabel}` : ""), "ok");
+      setImportStatus(msg, "ok");
     } catch (err) {
       console.error(err);
       setImportStatus(err.message || "Ошибка импорта.", "err");

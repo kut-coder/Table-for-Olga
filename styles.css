@@ -551,6 +551,16 @@ textarea {
   font-weight: 700;
 }
 
+/* Белые горизонтальные линии между приёмами (фон столбца = цвет обычной границы) */
+.menu-table thead th.col-meal {
+  border-bottom-color: #ffffff;
+}
+
+.menu-table tbody td.col-meal {
+  border-top-color: #ffffff;
+  border-bottom-color: #ffffff;
+}
+
 .menu-table .col-day {
   background: var(--green-pale);
 }
@@ -803,6 +813,15 @@ textarea {
     text-align: center !important;
     vertical-align: middle !important;
     font-weight: 700 !important;
+  }
+
+  .menu-table thead th.col-meal {
+    border-bottom-color: #ffffff !important;
+  }
+
+  .menu-table tbody td.col-meal {
+    border-top-color: #ffffff !important;
+    border-bottom-color: #ffffff !important;
   }
 
   .menu-table .col-day {
