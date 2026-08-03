@@ -4,9 +4,9 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Программа питания — нутрициолог</title>
-  <link rel="stylesheet" href="styles.css?v=23" />
+  <link rel="stylesheet" href="styles.css?v=24" />
   <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js" defer></script>
-  <script src="app.js?v=23" defer></script>
+  <script src="app.js?v=25" defer></script>
 </head>
 <body>
 
@@ -47,6 +47,25 @@
           <input type="number" id="week-number" min="1" max="24" placeholder="2" />
         </label>
       </div>
+
+      <div class="form-row" style="margin-top: 14px">
+        <label class="field">
+          <span class="field-label">Цель программы</span>
+          <input
+            type="text"
+            id="program-goal"
+            list="program-goal-options"
+            placeholder="снижение веса"
+            autocomplete="off"
+          />
+          <span class="field-hint">Строка: «Индивидуальная программа питания на …»</span>
+        </label>
+      </div>
+      <datalist id="program-goal-options">
+        <option value="снижение веса"></option>
+        <option value="поддержание веса"></option>
+        <option value="набор веса"></option>
+      </datalist>
 
       <div class="form-row" style="margin-top: 14px">
         <label class="field">

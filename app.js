@@ -132,6 +132,7 @@
     lastname: document.getElementById("client-lastname"),
     firstname: document.getElementById("client-firstname"),
     genitive: document.getElementById("client-genitive"),
+    programGoal: document.getElementById("program-goal"),
     month: document.getElementById("month-number"),
     week: document.getElementById("week-number"),
     mealToggles: document.getElementById("meal-toggles"),
@@ -177,7 +178,7 @@
 
   function periodLine(month, week) {
     const parts = [monthPhrase(month), weekPhrase(week)].filter(Boolean);
-    return parts.join(" · ");
+    return parts.join(" — ");
   }
 
   /** ФИО для шапки: ИМЯ ФАМИЛИЯ в верхнем регистре, как в эталоне */
@@ -318,6 +319,8 @@
     // Читаем поле заново из DOM — надёжнее при кэше/перезагрузке
     const genitiveEl = document.getElementById("client-genitive");
     const genitive = (genitiveEl ? genitiveEl.value : "").trim();
+    const goalEl = document.getElementById("program-goal");
+    const programGoal = (goalEl ? goalEl.value : "").trim();
     const month = els.month.value.trim();
     const week = els.week.value.trim();
     const activeMeals = getActiveMeals();
@@ -331,7 +334,16 @@
       days.push({ dayIndex: i + 1, meals });
     });
 
-    return { lastname, firstname, genitive, month, week, activeMeals, days };
+    return {
+      lastname,
+      firstname,
+      genitive,
+      programGoal,
+      month,
+      week,
+      activeMeals,
+      days,
+    };
   }
 
   /* ===========================================================
@@ -386,9 +398,13 @@
   function buildHeaderHtml(data) {
     const name = clientHeaderName(data.lastname, data.firstname);
     const period = periodLine(data.month, data.week);
+    const goal = (data.programGoal || "").trim();
+    const programLine = goal
+      ? `Индивидуальная программа питания на ${goal}`
+      : "Индивидуальная программа питания";
     return `
       <p class="sheet__name">${escapeHtml(name)}</p>
-      <p class="sheet__program">Индивидуальная программа питания</p>
+      <p class="sheet__program">${escapeHtml(programLine)}</p>
       <p class="sheet__period">${escapeHtml(period)}</p>
     `;
   }
@@ -777,6 +793,7 @@
       lastname: els.lastname.value,
       firstname: els.firstname.value,
       genitive: (document.getElementById("client-genitive") || {}).value || "",
+      programGoal: (document.getElementById("program-goal") || {}).value || "",
       month: els.month.value,
       week: els.week.value,
       mealsEnabled,
@@ -822,6 +839,8 @@
     els.firstname.value = draft.firstname || "";
     const genitiveEl = document.getElementById("client-genitive");
     if (genitiveEl) genitiveEl.value = draft.genitive || "";
+    const goalEl = document.getElementById("program-goal");
+    if (goalEl) goalEl.value = draft.programGoal || "";
     els.month.value = draft.month || "";
     els.week.value = draft.week || "";
 
@@ -1314,6 +1333,8 @@
     els.firstname.value = "";
     const genitiveEl = document.getElementById("client-genitive");
     if (genitiveEl) genitiveEl.value = "";
+    const goalEl = document.getElementById("program-goal");
+    if (goalEl) goalEl.value = "";
     els.month.value = "";
     els.week.value = "";
 
