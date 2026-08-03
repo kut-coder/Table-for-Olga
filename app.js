@@ -458,11 +458,11 @@
       .replace(/"/g, "&quot;");
   }
 
-  /** Нормализация граммовки к виду «40 г» */
+  /** Нормализация граммовки: число без единицы → «N г»; иначе оставляем как есть */
   function formatWeight(weight) {
     const w = String(weight).trim();
     if (!w) return "";
-    if (/[а-яА-Яa-zA-Z]/.test(w)) return w;
+    if (/[а-яА-ЯёЁa-zA-Z]/.test(w)) return w;
     return `${w} г`;
   }
 
@@ -1073,24 +1073,37 @@
     return null;
   }
 
-  /** Разбор строки продукта: «1. Название: 50 г, ...» */
+  /**
+   * Разбор строки продукта из TXT Health-Diet.
+   * Единица (г/гр/мл/л/шт. и т.п.) берётся из файла как есть.
+   */
   function parseProductLine(trimmed) {
     const numMatch = trimmed.match(/^(\d+)[.)]\s*(.+)$/);
     if (!numMatch) return null;
     const rest = numMatch[2].trim();
-    const unitRe = new RegExp(
-      "^(.+):\\s*([\\d.,]+)\\s*(?:" +
-        HD.gram +
-        "\u0440|" +
-        HD.gram +
-        "|g|gr)(?=\\s|,|$)",
-      "i"
+
+    // «Название: 50 г, ккал…» / «…: 2 шт., …» / «…: 200 мл., …»
+    const withUnit = rest.match(
+      /^(.+):\s*([\d.,]+)\s*([а-яА-ЯёЁa-zA-Z]+\.?)(?=\s*[,;]|\s+ккал\b|\s*$)/i
     );
-    const m = rest.match(unitRe);
-    if (!m) return null;
+    if (withUnit) {
+      const amount = withUnit[2].replace(",", ".");
+      const unit = withUnit[3].trim();
+      if (/^(белки|жиры|углеводы|ккал)$/i.test(unit)) return null;
+      return {
+        name: withUnit[1].trim(),
+        weight: `${amount} ${unit}`,
+      };
+    }
+
+    // Число без единицы → граммы по умолчанию
+    const noUnit = rest.match(
+      /^(.+):\s*([\d.,]+)(?=\s*[,;]|\s+ккал\b|\s*$)/i
+    );
+    if (!noUnit) return null;
     return {
-      name: m[1].trim(),
-      weight: `${m[2].replace(",", ".")} ${HD.gram}`,
+      name: noUnit[1].trim(),
+      weight: `${noUnit[2].replace(",", ".")} г`,
     };
   }
 
@@ -1425,6 +1438,19 @@
     const parsed = parseHealthDietTxt(sample);
     const day1 = parsed.days[0] && parsed.days[0].meals;
     const day2 = parsed.days[1] && parsed.days[1].meals;
+
+    const unitCases = [
+      ["1. Яйцо: 2 шт., ккал 10", "2 шт."],
+      ["1. Вода: 200 мл, ккал 0", "200 мл"],
+      ["1. Молоко: 0,5 л, ккал 1", "0.5 л"],
+      ["1. Мука: 40 гр., ккал 1", "40 гр."],
+      ["1. Творог: 100 г, ккал 1", "100 г"],
+    ];
+    const unitsOk = unitCases.every(([line, expect]) => {
+      const p = parseProductLine(line);
+      return p && p.weight === expect;
+    });
+
     const ok =
       parsed.days.length === 2 &&
       day1 &&
@@ -1434,11 +1460,13 @@
       day2 &&
       day2.breakfast &&
       !day2.snack1 &&
-      day2.snack2;
+      day2.snack2 &&
+      unitsOk;
 
     console.log("[HD import self-check]", ok ? "OK" : "FAIL", {
       days: parsed.days.length,
       products: parsed.stats.products,
+      unitsOk,
       day1: day1 && Object.keys(day1),
       day2: day2 && Object.keys(day2),
     });
@@ -1530,6 +1558,7 @@
 
   // Всегда доступно для тестов / консоли
   window.__HD_PARSE = parseHealthDietTxt;
+  window.__HD_PARSE_PRODUCT = parseProductLine;
   window.__HD_RENDER_CELL = renderMealCell;
   window.__VERIFY_SINGLE_PAGE = verifySinglePrintPage;
   window.__RENDER_PREVIEW = renderPreview;
