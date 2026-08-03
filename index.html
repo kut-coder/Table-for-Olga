@@ -4,9 +4,9 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Программа питания — нутрициолог</title>
-  <link rel="stylesheet" href="styles.css?v=24" />
+  <link rel="stylesheet" href="styles.css?v=26" />
   <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js" defer></script>
-  <script src="app.js?v=25" defer></script>
+  <script src="app.js?v=26" defer></script>
 </head>
 <body>
 
@@ -134,6 +134,17 @@
     </section>
 
     <!-- =========================================================
+         БЛОК 3b. РЕЖИМ И НАПИТКИ (редактируемые пункты)
+         ========================================================= -->
+    <section class="panel" id="footer-section">
+      <h2 class="panel-title">Режим и напитки</h2>
+      <p class="panel-hint">
+        Эти пункты появятся внизу печатной таблицы. Можно править текст, добавлять и удалять строки.
+      </p>
+      <div id="footer-blocks-editor" class="footer-blocks-editor"></div>
+    </section>
+
+    <!-- =========================================================
          БЛОК 4. ДНИ МЕНЮ
          Дни нумеруются с 1. В ячейке: название блюда (опц.) + продукты + комментарий
          ========================================================= -->
@@ -212,6 +223,16 @@
         <input type="text" class="item-weight" placeholder="40 г" />
         <button type="button" class="btn btn--icon btn-remove-item" title="Удалить">×</button>
       </div>
+    </div>
+  </template>
+
+  <!-- =========================================================
+       БЛОК 10. ШАБЛОН ПУНКТА РЕЖИМА / НАПИТКОВ
+       ========================================================= -->
+  <template id="footer-item-template">
+    <div class="footer-edit-row">
+      <input type="text" class="footer-item-text" placeholder="Текст пункта" autocomplete="off" />
+      <button type="button" class="btn btn--icon btn-remove-footer-item" title="Удалить">×</button>
     </div>
   </template>
 

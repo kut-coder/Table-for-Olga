@@ -84,6 +84,7 @@
 
   const FOOTER_BLOCKS = [
     {
+      id: "water",
       title: "ПИТЬЕВОЙ РЕЖИМ",
       items: [
         "Дневная норма воды — 2 литра.",
@@ -95,6 +96,7 @@
       ],
     },
     {
+      id: "diet",
       title: "РЕЖИМ ПИТАНИЯ",
       items: [
         "Рекомендуемый вес порции — до 250 г.",
@@ -105,6 +107,7 @@
       ],
     },
     {
+      id: "drinks",
       title: "РАЗРЕШЁННЫЕ НАПИТКИ",
       items: [
         "Вода.",
@@ -145,9 +148,11 @@
     importFile: document.getElementById("import-file"),
     btnImportPaste: document.getElementById("btn-import-paste"),
     importStatus: document.getElementById("import-status"),
+    footerEditor: document.getElementById("footer-blocks-editor"),
     tplDay: document.getElementById("day-card-template"),
     tplMeal: document.getElementById("meal-slot-template"),
     tplProduct: document.getElementById("product-item-template"),
+    tplFooterItem: document.getElementById("footer-item-template"),
   };
 
   /* ===========================================================
@@ -188,6 +193,101 @@
       .join(" ")
       .trim()
       .toUpperCase();
+  }
+
+  /* ===========================================================
+     БЛОК 3b. РЕДАКТОР РЕЖИМА И НАПИТКОВ
+     =========================================================== */
+  function defaultFooterItemsMap() {
+    const map = {};
+    FOOTER_BLOCKS.forEach((block) => {
+      map[block.id] = block.items.slice();
+    });
+    return map;
+  }
+
+  function addFooterItem(listEl, text) {
+    if (!els.tplFooterItem || !listEl) return;
+    const node = els.tplFooterItem.content.cloneNode(true);
+    const row = node.querySelector(".footer-edit-row");
+    const input = row.querySelector(".footer-item-text");
+    input.value = text || "";
+    row.querySelector(".btn-remove-footer-item").addEventListener("click", () => {
+      row.remove();
+      notifyFormChange();
+    });
+    listEl.appendChild(node);
+  }
+
+  function renderFooterEditors(itemsById) {
+    if (!els.footerEditor) return;
+    const source = itemsById || defaultFooterItemsMap();
+    els.footerEditor.innerHTML = "";
+
+    FOOTER_BLOCKS.forEach((block) => {
+      const card = document.createElement("div");
+      card.className = "footer-edit-card";
+      card.dataset.footerId = block.id;
+
+      const title = document.createElement("h3");
+      title.className = "footer-edit-card__title";
+      title.textContent = block.title;
+      card.appendChild(title);
+
+      const list = document.createElement("div");
+      list.className = "footer-edit-list";
+      card.appendChild(list);
+
+      const items = Array.isArray(source[block.id]) ? source[block.id] : block.items;
+      (items.length ? items : [""]).forEach((text) => addFooterItem(list, text));
+
+      const addBtn = document.createElement("button");
+      addBtn.type = "button";
+      addBtn.className = "btn btn--ghost btn-add-footer-item";
+      addBtn.textContent = "+ Пункт";
+      addBtn.addEventListener("click", () => {
+        addFooterItem(list, "");
+        const inputs = list.querySelectorAll(".footer-item-text");
+        const last = inputs[inputs.length - 1];
+        if (last) last.focus();
+        notifyFormChange();
+      });
+      card.appendChild(addBtn);
+
+      els.footerEditor.appendChild(card);
+    });
+  }
+
+  function collectFooterBlocks() {
+    if (!els.footerEditor) {
+      return FOOTER_BLOCKS.map((block) => ({
+        id: block.id,
+        title: block.title,
+        items: block.items.slice(),
+      }));
+    }
+
+    return FOOTER_BLOCKS.map((block) => {
+      const card = els.footerEditor.querySelector(
+        `.footer-edit-card[data-footer-id="${block.id}"]`
+      );
+      const items = [];
+      if (card) {
+        card.querySelectorAll(".footer-item-text").forEach((input) => {
+          const text = input.value.trim();
+          if (text) items.push(text);
+        });
+      }
+      return { id: block.id, title: block.title, items };
+    });
+  }
+
+  function collectFooterItemsMap() {
+    const map = {};
+    collectFooterBlocks().forEach((block) => {
+      map[block.id] = block.items.slice();
+    });
+    return map;
   }
 
   /* ===========================================================
@@ -343,6 +443,7 @@
       week,
       activeMeals,
       days,
+      footerBlocks: collectFooterBlocks(),
     };
   }
 
@@ -410,15 +511,26 @@
   }
 
   function buildFooterHtml(data) {
-    const cards = FOOTER_BLOCKS.map(
-      (block) => `
+    const blocks =
+      Array.isArray(data.footerBlocks) && data.footerBlocks.length
+        ? data.footerBlocks
+        : FOOTER_BLOCKS;
+
+    const cards = blocks
+      .filter((block) => (block.items || []).some((item) => String(item).trim()))
+      .map((block) => {
+        const items = (block.items || [])
+          .map((item) => String(item).trim())
+          .filter(Boolean)
+          .map((item) => `<li>${escapeHtml(item)}</li>`)
+          .join("");
+        return `
       <div class="footer-card">
         <h4 class="footer-card__title">${escapeHtml(block.title)}</h4>
-        <ul class="footer-card__list">
-          ${block.items.map((item) => `<li>${escapeHtml(item)}</li>`).join("")}
-        </ul>
-      </div>`
-    ).join("");
+        <ul class="footer-card__list">${items}</ul>
+      </div>`;
+      })
+      .join("");
 
     // Только из поля «родительный падеж»; имя/фамилию сюда НЕ подставляем
     const personal = (data.genitive || "").trim();
@@ -798,6 +910,7 @@
       week: els.week.value,
       mealsEnabled,
       days,
+      footerItems: collectFooterItemsMap(),
     };
   }
 
@@ -861,6 +974,13 @@
         : [{ meals: {} }];
 
     days.forEach((day) => addDay(day.meals || {}));
+
+    const footerItems =
+      draft.footerItems && typeof draft.footerItems === "object"
+        ? draft.footerItems
+        : defaultFooterItemsMap();
+    renderFooterEditors(footerItems);
+
     return true;
   }
 
@@ -1344,6 +1464,7 @@
 
     els.daysContainer.innerHTML = "";
     addDay();
+    renderFooterEditors(defaultFooterItemsMap());
     clearDraft();
     renderPreview();
   }
@@ -1402,6 +1523,7 @@
 
     if (!loadDraft()) {
       addDay();
+      renderFooterEditors(defaultFooterItemsMap());
     }
     renderPreview();
   }
