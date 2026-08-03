@@ -1074,21 +1074,32 @@
   }
 
   /**
+   * Нормализация единиц из TXT Health-Diet для формы и таблицы.
+   * «Штука» / «штуки» / «штук» → «шт.»
+   */
+  function normalizeImportUnit(unit) {
+    const u = String(unit || "").trim();
+    if (!u) return u;
+    if (/^штук[аи]?\.?$/i.test(u) || /^шт\.?$/i.test(u)) return "шт.";
+    return u;
+  }
+
+  /**
    * Разбор строки продукта из TXT Health-Diet.
-   * Единица (г/гр/мл/л/шт. и т.п.) берётся из файла как есть.
+   * Единица (г/гр/мл/л/шт. и т.п.) берётся из файла; «Штука» → «шт.»
    */
   function parseProductLine(trimmed) {
     const numMatch = trimmed.match(/^(\d+)[.)]\s*(.+)$/);
     if (!numMatch) return null;
     const rest = numMatch[2].trim();
 
-    // «Название: 50 г, ккал…» / «…: 2 шт., …» / «…: 200 мл., …»
+    // «Название: 50 г, ккал…» / «…: 1 Штука, …» / «…: 200 мл., …»
     const withUnit = rest.match(
       /^(.+):\s*([\d.,]+)\s*([а-яА-ЯёЁa-zA-Z]+\.?)(?=\s*[,;]|\s+ккал\b|\s*$)/i
     );
     if (withUnit) {
       const amount = withUnit[2].replace(",", ".");
-      const unit = withUnit[3].trim();
+      const unit = normalizeImportUnit(withUnit[3]);
       if (/^(белки|жиры|углеводы|ккал)$/i.test(unit)) return null;
       return {
         name: withUnit[1].trim(),
@@ -1441,6 +1452,8 @@
 
     const unitCases = [
       ["1. Яйцо: 2 шт., ккал 10", "2 шт."],
+      ["1. Яйцо куриное: 1 Штука, ккал 78.5", "1 шт."],
+      ["1. Банан: 0.5 Штука, ккал 34.56", "0.5 шт."],
       ["1. Вода: 200 мл, ккал 0", "200 мл"],
       ["1. Молоко: 0,5 л, ккал 1", "0.5 л"],
       ["1. Мука: 40 гр., ккал 1", "40 гр."],
