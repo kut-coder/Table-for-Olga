@@ -535,16 +535,16 @@ textarea {
 }
 
 .menu-table .col-meal {
-  width: 92px;
+  /* Ширина задаётся в JS по слову «Утренний»; здесь только оформление */
   background: var(--green-mid);
   color: #fff;
   text-align: center;
   vertical-align: middle;
   font-weight: 700;
   line-height: 1.15;
-  padding-left: 4px;
-  padding-right: 4px;
-  white-space: normal;
+  padding-left: 2px;
+  padding-right: 2px;
+  white-space: nowrap;
   word-break: keep-all;
   overflow-wrap: normal;
   word-wrap: normal;
@@ -805,16 +805,15 @@ textarea {
   }
 
   .menu-table .col-meal {
-    width: 92px !important;
     background: #4f8b5c !important;
     color: #ffffff !important;
     text-align: center !important;
     vertical-align: middle !important;
     font-weight: 700 !important;
     line-height: 1.15 !important;
-    padding-left: 4px !important;
-    padding-right: 4px !important;
-    white-space: normal !important;
+    padding-left: 2px !important;
+    padding-right: 2px !important;
+    white-space: nowrap !important;
     word-break: keep-all !important;
     overflow-wrap: normal !important;
     word-wrap: normal !important;

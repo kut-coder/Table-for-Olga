@@ -474,6 +474,43 @@
   }
 
   /**
+   * Ширина столбца «Приём пищи» = ширина слова «Утренний» + padding 2px слева/справа.
+   * Пересчитывается после смены font-size листа.
+   */
+  function applyMealColumnWidth(sheet) {
+    const sample =
+      sheet.querySelector(".menu-table tbody td.col-meal") ||
+      sheet.querySelector(".menu-table .col-meal");
+    if (!sample) return;
+
+    const cs = getComputedStyle(sample);
+    const probe = document.createElement("span");
+    probe.textContent = "Утренний";
+    probe.style.cssText = [
+      "position:absolute",
+      "visibility:hidden",
+      "left:0",
+      "top:0",
+      "white-space:nowrap",
+      "font-family:" + cs.fontFamily,
+      "font-size:" + cs.fontSize,
+      "font-weight:" + cs.fontWeight,
+      "font-style:" + cs.fontStyle,
+      "letter-spacing:" + cs.letterSpacing,
+    ].join(";");
+    document.body.appendChild(probe);
+    const textW = Math.ceil(probe.getBoundingClientRect().width);
+    probe.remove();
+
+    const widthPx = Math.max(textW + 6, 1); // padding 2+2 и запас под границы ячейки
+    sheet.querySelectorAll(".menu-table .col-meal").forEach((el) => {
+      el.style.width = widthPx + "px";
+      el.style.minWidth = widthPx + "px";
+      el.style.maxWidth = widthPx + "px";
+    });
+  }
+
+  /**
    * Подгоняет весь документ в один лист A4 landscape:
    * шрифт → компактный режим → zoom (Chrome/Edge).
    */
@@ -489,19 +526,23 @@
     let size = 12;
     const min = 6;
     sheet.style.fontSize = size + "px";
+    applyMealColumnWidth(sheet);
 
     while (size > min && !sheetFits(sheet)) {
       size -= 0.5;
       sheet.style.fontSize = size + "px";
+      applyMealColumnWidth(sheet);
     }
 
     if (!sheetFits(sheet)) {
       sheet.classList.add("sheet--compact");
       size = Math.min(size, 9);
       sheet.style.fontSize = size + "px";
+      applyMealColumnWidth(sheet);
       while (size > min && !sheetFits(sheet)) {
         size -= 0.5;
         sheet.style.fontSize = size + "px";
+        applyMealColumnWidth(sheet);
       }
     }
 
