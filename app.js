@@ -382,7 +382,7 @@
     const period = periodLine(data.month, data.week);
     return `
       <p class="sheet__name">${escapeHtml(name)}</p>
-      <p class="sheet__program">Программа питания</p>
+      <p class="sheet__program">Индивидуальная программа питания</p>
       <p class="sheet__period">${escapeHtml(period)}</p>
     `;
   }
