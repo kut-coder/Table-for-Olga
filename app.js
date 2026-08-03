@@ -377,6 +377,12 @@
     return parts.join("");
   }
 
+  function mealLabelHtml(mealKey) {
+    if (mealKey === "snack1") return "Утренний<br>перекус";
+    if (mealKey === "snack2") return "Дневной<br>перекус";
+    return escapeHtml(MEAL_LABELS[mealKey]);
+  }
+
   function buildHeaderHtml(data) {
     const name = clientHeaderName(data.lastname, data.firstname);
     const period = periodLine(data.month, data.week);
@@ -431,7 +437,7 @@
           .join("");
         return `
           <tr>
-            <td class="col-meal">${escapeHtml(MEAL_LABELS[mealKey])}</td>
+            <td class="col-meal">${mealLabelHtml(mealKey)}</td>
             ${cells}
           </tr>`;
       })
@@ -441,7 +447,7 @@
       <table class="menu-table">
         <thead>
           <tr>
-            <th class="col-meal">Приём пищи</th>
+            <th class="col-meal">Приём<br>пищи</th>
             ${headDays}
           </tr>
         </thead>

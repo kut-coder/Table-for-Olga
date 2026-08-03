@@ -442,14 +442,6 @@ textarea {
   line-height: 1.2;
 }
 
-.sheet--compact .sheet__name {
-  font-size: 1.45em;
-}
-
-.sheet--compact .sheet__program {
-  font-size: 1em;
-}
-
 .sheet--compact .sheet__period {
   margin-bottom: 8px;
 }
@@ -480,10 +472,10 @@ textarea {
   margin-top: 6px;
 }
 
-/* --- Шапка документа --- */
+/* --- Шапка документа (целевые размеры; при нехватке места уменьшает fit/zoom) --- */
 .sheet__name {
   margin: 0;
-  font-size: 1.85em;
+  font-size: 13px;
   font-weight: 700;
   letter-spacing: 0.04em;
   text-transform: uppercase;
@@ -493,7 +485,7 @@ textarea {
 
 .sheet__program {
   margin: 4px 0 0;
-  font-size: 1.15em;
+  font-size: 14px;
   font-weight: 600;
   color: var(--green-mid);
   text-align: center;
@@ -501,7 +493,7 @@ textarea {
 
 .sheet__period {
   margin: 4px 0 14px;
-  font-size: 0.95em;
+  font-size: 12px;
   color: var(--green-mid);
   text-align: center;
 }
@@ -543,12 +535,20 @@ textarea {
 }
 
 .menu-table .col-meal {
-  width: 11%;
+  width: 92px;
   background: var(--green-mid);
   color: #fff;
   text-align: center;
   vertical-align: middle;
   font-weight: 700;
+  line-height: 1.15;
+  padding-left: 4px;
+  padding-right: 4px;
+  white-space: normal;
+  word-break: keep-all;
+  overflow-wrap: normal;
+  word-wrap: normal;
+  hyphens: none;
 }
 
 /* Белые горизонтальные линии между приёмами (фон столбца = цвет обычной границы) */
@@ -601,6 +601,7 @@ textarea {
   display: grid;
   grid-template-columns: 1fr 1fr 1fr;
   gap: 10px;
+  font-size: 10px;
 }
 
 .footer-card {
@@ -615,7 +616,7 @@ textarea {
   padding: 6px 8px;
   background: var(--green-dark);
   color: #fff;
-  font-size: 0.95em;
+  font-size: 1em;
   font-weight: 700;
   text-align: center;
   letter-spacing: 0.02em;
@@ -625,6 +626,7 @@ textarea {
   margin: 0;
   padding: 8px 10px 8px 22px;
   color: var(--green-text);
+  font-size: 1em;
 }
 
 .footer-card__list li {
@@ -637,22 +639,18 @@ textarea {
   color: var(--green-dark);
 }
 
-/* Курсив подписи; шрифт наследует от .sheet */
+/* Курсив подписи */
 .sheet-sign__author,
 .sheet-sign__personal {
   margin: 0;
   font-style: italic;
   font-weight: 400;
+  font-size: 12px;
   color: var(--green-dark);
 }
 
 .sheet-sign__author {
   margin-bottom: 4px;
-  font-size: 1em;
-}
-
-.sheet-sign__personal {
-  font-size: 0.95em;
 }
 
 
@@ -761,7 +759,7 @@ textarea {
 
   .sheet__name {
     color: #2e5e3e !important;
-    font-size: 1.85em !important;
+    font-size: 13px !important;
     font-weight: 700 !important;
     letter-spacing: 0.04em !important;
     text-transform: uppercase !important;
@@ -770,14 +768,14 @@ textarea {
 
   .sheet__program {
     color: #4f8b5c !important;
-    font-size: 1.15em !important;
+    font-size: 14px !important;
     font-weight: 600 !important;
     text-align: center !important;
   }
 
   .sheet__period {
     color: #4f8b5c !important;
-    font-size: 0.95em !important;
+    font-size: 12px !important;
     text-align: center !important;
     margin: 4px 0 14px !important;
   }
@@ -807,12 +805,20 @@ textarea {
   }
 
   .menu-table .col-meal {
-    width: 11% !important;
+    width: 92px !important;
     background: #4f8b5c !important;
     color: #ffffff !important;
     text-align: center !important;
     vertical-align: middle !important;
     font-weight: 700 !important;
+    line-height: 1.15 !important;
+    padding-left: 4px !important;
+    padding-right: 4px !important;
+    white-space: normal !important;
+    word-break: keep-all !important;
+    overflow-wrap: normal !important;
+    word-wrap: normal !important;
+    hyphens: none !important;
   }
 
   .menu-table thead th.col-meal {
@@ -855,6 +861,7 @@ textarea {
     grid-template-columns: 1fr 1fr 1fr !important;
     gap: 10px !important;
     margin-top: 14px !important;
+    font-size: 10px !important;
   }
 
   .footer-card {
@@ -869,10 +876,12 @@ textarea {
     color: #ffffff !important;
     text-align: center !important;
     font-weight: 700 !important;
+    font-size: 1em !important;
   }
 
   .footer-card__list {
     color: #1f3a28 !important;
+    font-size: 1em !important;
   }
 
   .sheet-sign {
@@ -885,5 +894,6 @@ textarea {
     color: #2e5e3e !important;
     font-style: italic !important;
     font-weight: 400 !important;
+    font-size: 12px !important;
   }
 }
